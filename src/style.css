@@ -1,0 +1,340 @@
+/* Amazonas vs Leñadores — extensión en RA de la página de PyCon Colombia 2028.
+   Tokens de color, tipografía y forma de tarjetas/botones tomados de la página (styles.css). */
+:root {
+  --cream: #fbf6ec; /* fondo de tarjeta */
+  --orange: #e3913a; /* borde de tarjeta */
+  --aqua: #eef2e1; /* panel interno salvia */
+  --teal: #4d6e3c; /* verde selva */
+  --blush: #f6e5d3;
+  --teal-btn: #3f5f31;
+  --teal-btn-h: #2f4a24;
+  --teal-ink: #2f4a24;
+  --ink: #1b2a17;
+  --muted: #4e5a45;
+  --card-fill: rgba(251, 246, 236, 0.9);
+  --inset-fill: rgba(238, 242, 225, 0.85);
+  --radius-card: 24px;
+  --radius-inner: 14px;
+  --radius-pill: 999px;
+  --shadow: 0 30px 60px -30px rgba(27, 42, 23, 0.55), 0 2px 8px rgba(27, 42, 23, 0.08);
+  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #e9efdd;
+  font-family: var(--font);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app canvas {
+  display: block;
+  touch-action: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+/* ───── Portada: el atardecer de la página detrás de una tarjeta crema ───── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  /* ilustración de portada: la selva en caos y el chigüiro en primer plano (a la derecha) */
+  background: #4d6a3b url('/portada.svg') 72% center / cover no-repeat;
+  justify-items: start;
+  padding-left: clamp(16px, 5vw, 72px);
+  transition: opacity 0.35s ease;
+  z-index: 10;
+  overflow-y: auto;
+}
+
+body.playing #overlay {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card {
+  width: min(600px, 100%);
+  background: var(--card-fill);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  border: 1.5px solid var(--orange);
+  border-radius: var(--radius-card);
+  padding: clamp(22px, 4vw, 36px);
+  box-shadow: var(--shadow);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 18px;
+}
+
+.brand svg {
+  width: 34px;
+  height: 34px;
+}
+
+.brand b {
+  color: var(--teal-ink);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  margin-bottom: 0.7em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal-ink);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 2px;
+  background: var(--orange);
+}
+
+h1 {
+  margin: 0 0 0.4em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-size: clamp(2rem, 6vw, 2.9rem);
+  color: var(--ink);
+}
+
+h1 span {
+  color: var(--orange);
+  font-size: 0.7em;
+  vertical-align: 0.1em;
+}
+
+.lead {
+  margin: 0 0 20px;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.lead b {
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  min-height: 48px;
+  padding: 0.7em 1.6em;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.2;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+button.primary {
+  background: var(--teal-btn);
+  color: #fff;
+  box-shadow: 0 10px 24px -12px rgba(47, 74, 36, 0.9);
+  flex: 1 1 260px;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--teal-btn-h);
+}
+
+button.secondary {
+  background: transparent;
+  border-color: var(--teal-btn);
+  color: var(--teal-ink);
+  flex: 1 1 200px;
+}
+
+button.secondary:hover {
+  background: var(--aqua);
+  border-color: var(--orange);
+}
+
+.status {
+  margin: 14px 0 4px;
+  font-size: 0.88rem;
+  min-height: 1.2em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.status.ok {
+  color: var(--teal-ink);
+}
+
+.status.warn {
+  color: #9a4a1c;
+}
+
+.steps {
+  margin: 16px 0;
+  padding: 14px 18px 14px 38px;
+  line-height: 1.55;
+  color: var(--muted);
+  background: var(--inset-fill);
+  border-radius: var(--radius-inner);
+  font-size: 0.93rem;
+}
+
+.steps b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roster li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.35em 0.9em 0.35em 0.6em;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--teal);
+  background: var(--cream);
+  color: var(--teal-ink);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.roster i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 2px rgba(27, 42, 23, 0.12);
+}
+
+.roster b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ───── Barra inferior del modo navegador ───── */
+#hud-desktop {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 16px;
+  background: rgba(251, 246, 236, 0.9);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid var(--orange);
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink);
+  max-width: calc(100% - 24px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 5;
+  box-shadow: var(--shadow);
+}
+
+body.playing:not(.in-xr) #hud-desktop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#hud-desktop button {
+  min-height: 34px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  background: var(--teal-btn);
+  color: #fff;
+}
+
+#hud-desktop #btn-help {
+  width: 34px;
+  padding: 6px 0;
+  background: transparent;
+  border-color: var(--teal-btn);
+  color: var(--teal-ink);
+}
+
+@media (max-width: 640px) {
+  .hint {
+    display: none;
+  }
+}
+
+/* Portada en pantallas angostas o casi cuadradas: la ilustración arriba y la tarjeta debajo */
+@media (max-width: 1180px), (max-aspect-ratio: 3/2) {
+  #overlay {
+    justify-items: center;
+    align-items: start;
+    padding: 16px;
+    padding-top: clamp(190px, 40vw, 58vh);
+    background: #4fa040 url('/portada.svg') center top / 100% auto no-repeat;
+    background-attachment: local;
+  }
+}
+
+.enemies-title {
+  margin: 18px 0 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal-ink);
+}

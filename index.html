@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Experiencia de realidad aumentada de PyCon Colombia 2028 para Meta Quest: defiende la selva amazónica sobre tu mesa." />
+    <title>Amazonas vs Leñadores · PyCon Colombia 2028</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="overlay">
+      <div class="card">
+        <div class="brand">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M31.5 3C22 3 17 6.4 17 12.5V20h15v3H10.5C4.6 23 1 27.6 1 36.5S4.6 50 10.5 50H16v-8.3C16 35.8 20.6 31 26.5 31h13c4.9 0 8.5-3.8 8.5-8.6V12.5C48 6.6 42 3 31.5 3Z" fill="#47868B" />
+            <path d="M31.5 3C22 3 17 6.4 17 12.5V20h15v3H10.5C4.6 23 1 27.6 1 36.5S4.6 50 10.5 50H16v-8.3C16 35.8 20.6 31 26.5 31h13c4.9 0 8.5-3.8 8.5-8.6V12.5C48 6.6 42 3 31.5 3Z" fill="#F59216" transform="rotate(180 32 32)" />
+            <circle cx="24" cy="11.5" r="2.8" fill="#FFFDF7" />
+            <circle cx="40" cy="52.5" r="2.8" fill="#FFFDF7" />
+          </svg>
+          <span>PyCon <b>Colombia 2028</b></span>
+        </div>
+        <div class="eyebrow">Experiencia de realidad aumentada · Meta Quest</div>
+        <h1>Amazonas <span>vs</span> Leñadores</h1>
+        <p class="lead">
+          Defiende la selva desde tu mesa. Leñadores y máquinas de <b>DEFORESTA&nbsp;S.A.</b> cruzan el río desde todos
+          lados para talar el <b>Mangle madre</b>, en el centro de la isla. Junta las gotas de agua que trae la corriente
+          y planta defensores amazónicos en la tierra verde. Cada nivel ganado te descubre algo de PyCon Colombia 2028.
+        </p>
+        <div class="actions">
+          <button id="btn-ar" class="primary" disabled>Entrar en realidad aumentada</button>
+          <button id="btn-desktop" class="secondary">Probar en el navegador</button>
+        </div>
+        <p id="xr-status" class="status">Comprobando compatibilidad…</p>
+        <ol class="steps">
+          <li><b>Mira una mesa.</b> Las gafas la detectan y el tablero brota sobre ella. Empieza por el <b>tutorial</b>.</li>
+          <li><b>Toca las gotas de agua</b> que flotan en el río: con ellas compras defensores.</li>
+          <li><b>Pellizca una carta</b> y suéltala en la tierra verde de la isla (en la arena no se puede).</li>
+          <li><b>Lanza el jabillo</b> como una granada y <b>barre a los invasores</b> con la mano abierta. En lo hondo del río los tiradores no los alcanzan.</li>
+        </ol>
+        <ul class="roster">
+          <li><i style="--c: #e8352b"></i><b>Heliconia</b> agua</li>
+          <li><i style="--c: #d42a2a"></i><b>Achiote</b> barrera</li>
+          <li><i style="--c: #ffd21f"></i><b>Rana</b> veneno</li>
+          <li><i style="--c: #3b8f3e"></i><b>Ceiba</b> muro</li>
+          <li><i style="--c: #2f8cff"></i><b>Mariposa</b> cura</li>
+          <li><i style="--c: #8b5e3c"></i><b>Chigüiro</b> muerde</li>
+          <li><i style="--c: #7a4a28"></i><b>Mono</b> salta</li>
+          <li><i style="--c: #d62828"></i><b>Guacamaya</b> abanico</li>
+          <li><i style="--c: #4f5a2e"></i><b>Tortuga</b> nada</li>
+          <li><i style="--c: #5a6e2c"></i><b>Anaconda</b> atrapa</li>
+          <li><i style="--c: #8d9d3e"></i><b>Jabillo</b> granada</li>
+        </ul>
+        <p class="enemies-title">Invasores · cada uno aguanta el doble (o el triple) que el anterior</p>
+        <ul class="roster enemies">
+          <li><i style="--c: #c8423a"></i><b>Leñador</b> independiente</li>
+          <li><i style="--c: #ff8a2a"></i><b>Leñador</b> profesional</li>
+          <li><i style="--c: #ffd23f"></i><b>Motosierrista</b></li>
+          <li><i style="--c: #f2b705"></i><b>Excavadora</b></li>
+          <li><i style="--c: #e0a21b"></i><b>Bulldócer</b></li>
+          <li><i style="--c: #f06a1a"></i><b>Astilladora</b></li>
+          <li><i style="--c: #d63a2a"></i><b>Desbrozadora</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="hud-desktop">
+      <span class="hint">Clic: arrastra cartas, toca las gotas, haz clic en un invasor para empujarlo · Clic derecho: girar · Rueda: acercar</span>
+      <button id="btn-ar-mini" hidden>Entrar en RA</button>
+      <button id="btn-help" title="Ver instrucciones">?</button>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
