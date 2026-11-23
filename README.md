@@ -120,7 +120,7 @@ Con el servidor de desarrollo puedes emular unas Quest 3 con manos usando el run
 
 ## Probar en las Meta Quest
 
-WebXR exige **HTTPS** (o `localhost`). Tres opciones:
+WebXR exige **HTTPS** (o `localhost`). Cuatro opciones:
 
 **A. Por Wi-Fi (rápido para desarrollar).** PC y Quest en la misma red:
 
@@ -132,7 +132,7 @@ La consola muestra algo como `https://192.168.1.50:5173`. Ábrelo en el **navega
 advertencia del certificado (*Avanzado → Continuar*) y pulsa **“Entrar en realidad aumentada”**.
 
 > Las redes Wi-Fi de universidades, oficinas y lugares públicos suelen **aislar los dispositivos** entre sí: la
-> Quest no llega al PC y la página se queda cargando. En ese caso usa la opción **C** (publicarlo).
+> Quest no llega al PC y la página se queda cargando. En ese caso usa la opción **C** (GitHub Pages) o **D**.
 >
 > En Windows, si PowerShell dice que “la ejecución de scripts está deshabilitada”, escribe `npm.cmd` en vez de
 > `npm` (por ejemplo `npm.cmd run dev`).
@@ -145,7 +145,11 @@ adb reverse tcp:5174 tcp:5174
 
 Luego `npm run dev:http` y en la Quest abre `http://localhost:5174`.
 
-**C. Publicarlo** (para presentar o compartir):
+**C. GitHub Pages** (se publica solo en cada `git push`): el flujo `.github/workflows/deploy.yml` compila y
+publica el juego en <https://alvarez-dsg.github.io/Experiencia-de-juego-pycon/>. La primera vez hay que activar
+*Settings → Pages → Source: GitHub Actions* en el repositorio. El avance se ve en la pestaña **Actions**.
+
+**D. Publicarlo a mano** (para presentar o compartir):
 
 ```bash
 npm run build
