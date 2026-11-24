@@ -25,23 +25,27 @@
           </svg>
           <span>PyCon <b>Colombia 2028</b></span>
         </div>
-        <div class="eyebrow">Experiencia de realidad aumentada · Meta Quest</div>
-        <h1>Amazonas <span>vs</span> Leñadores</h1>
-        <p class="lead">
+        <div class="lang-pill" role="group" aria-label="Idioma / Language">
+          <button type="button" data-lang="es">Español</button>
+          <button type="button" data-lang="en">English</button>
+        </div>
+        <div class="eyebrow" data-en="Augmented reality experience · Meta Quest">Experiencia de realidad aumentada · Meta Quest</div>
+        <h1 data-en="Amazon <span>vs</span> Loggers">Amazonas <span>vs</span> Leñadores</h1>
+        <p class="lead" data-en="Defend the rainforest from your table. Loggers and machines from <b>DEFORESTA&nbsp;S.A.</b> cross the river from every side to raze the <b>heart of the island</b>, a meadow at its center. Collect the water drops the current brings and plant Amazon defenders on the green land. Every level you win reveals something about PyCon Colombia 2028.">
           Defiende la selva desde tu mesa. Leñadores y máquinas de <b>DEFORESTA&nbsp;S.A.</b> cruzan el río desde todos
-          lados para talar el <b>Mangle madre</b>, en el centro de la isla. Junta las gotas de agua que trae la corriente
-          y planta defensores amazónicos en la tierra verde. Cada nivel ganado te descubre algo de PyCon Colombia 2028.
+          lados para arrasar el <b>corazón de la isla</b>, una pradera en su centro. Junta las gotas de agua que trae la
+          corriente y planta defensores amazónicos en la tierra verde. Cada nivel ganado te descubre algo de PyCon Colombia 2028.
         </p>
         <div class="actions">
-          <button id="btn-ar" class="primary" disabled>Entrar en realidad aumentada</button>
-          <button id="btn-desktop" class="secondary">Probar en el navegador</button>
+          <button id="btn-ar" class="primary" disabled data-en="Enter augmented reality">Entrar en realidad aumentada</button>
+          <button id="btn-desktop" class="secondary" data-en="Try it in the browser">Probar en el navegador</button>
         </div>
         <p id="xr-status" class="status">Comprobando compatibilidad…</p>
         <ol class="steps">
-          <li><b>Mira una mesa.</b> Las gafas la detectan y el tablero brota sobre ella. Empieza por el <b>tutorial</b>.</li>
-          <li><b>Toca las gotas de agua</b> que flotan en el río: con ellas compras defensores.</li>
-          <li><b>Pellizca una carta</b> y suéltala en la tierra verde de la isla (en la arena no se puede).</li>
-          <li><b>Lanza el jabillo</b> como una granada y <b>barre a los invasores</b> con la mano abierta. En lo hondo del río los tiradores no los alcanzan.</li>
+          <li data-en="<b>Look at a table.</b> The headset detects it and the board sprouts on top. Start with the <b>tutorial</b>."><b>Mira una mesa.</b> Las gafas la detectan y el tablero brota sobre ella. Empieza por el <b>tutorial</b>.</li>
+          <li data-en="<b>Tap the water drops</b> floating in the river: they buy defenders."><b>Toca las gotas de agua</b> que flotan en el río: con ellas compras defensores.</li>
+          <li data-en="<b>Pinch a card</b> and drop it on an open green tile (2 rows at first, one more each level)."><b>Pellizca una carta</b> y suéltala en una casilla verde abierta (2 filas al principio, una más por nivel).</li>
+          <li data-en="<b>Throw the sandbox fruit</b> like a grenade and <b>push invaders</b> by swiping an open hand or by pinching and flicking your index finger. In the deep river shooters can’t reach them."><b>Lanza el jabillo</b> como una granada y <b>empuja a los invasores</b> barriendo con la mano abierta o pellizcando y soltando el índice como un tirito. En lo hondo del río los tiradores no los alcanzan.</li>
         </ol>
         <ul class="roster">
           <li><i style="--c: #e8352b"></i><b>Heliconia</b> agua</li>
@@ -56,7 +60,7 @@
           <li><i style="--c: #5a6e2c"></i><b>Anaconda</b> atrapa</li>
           <li><i style="--c: #8d9d3e"></i><b>Jabillo</b> granada</li>
         </ul>
-        <p class="enemies-title">Invasores · cada uno aguanta el doble (o el triple) que el anterior</p>
+        <p class="enemies-title" data-en="Invaders · each one is twice (or three times) as tough as the last">Invasores · cada uno aguanta el doble (o el triple) que el anterior</p>
         <ul class="roster enemies">
           <li><i style="--c: #c8423a"></i><b>Leñador</b> independiente</li>
           <li><i style="--c: #ff8a2a"></i><b>Leñador</b> profesional</li>
@@ -70,7 +74,7 @@
     </div>
 
     <div id="hud-desktop">
-      <span class="hint">Clic: arrastra cartas, toca las gotas, haz clic en un invasor para empujarlo · Clic derecho: girar · Rueda: acercar</span>
+      <span class="hint" data-en="Click: drag cards, tap drops, click an invader to push it · Right click: rotate · Wheel: zoom">Clic: arrastra cartas, toca las gotas, haz clic en un invasor para empujarlo · Clic derecho: girar · Rueda: acercar</span>
       <button id="btn-ar-mini" hidden>Entrar en RA</button>
       <button id="btn-help" title="Ver instrucciones">?</button>
     </div>

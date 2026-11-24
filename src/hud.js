@@ -5,26 +5,16 @@ import { Panel3D, Banner, PY } from './ui3d.js';
 import { FACTS, LAYOUT } from './config.js';
 import { TeamSelect } from './select.js';
 import { PyconCard } from './pycon.js';
+import { StartScreen } from './screens.js';
+import { tr, onLang } from './i18n.js';
 
 const _f = new THREE.Vector3();
 const _t = new THREE.Vector3();
 
 export class Hud {
   constructor(board, scene, actions) {
-    this.start = new Panel3D({
-      w: 0.48,
-      h: 0.29,
-      buttons: [
-        { label: 'Empezar tutorial', w: 0.16, onPress: () => actions.tutorial() },
-        { label: 'Ir al nivel 1', w: 0.13, variant: 'outline', onPress: () => actions.choose() },
-        { label: 'Recolocar', w: 0.11, variant: 'outline', onPress: () => actions.relocate() },
-      ],
-    });
-    this.start.setText(
-      'Amazonas vs Leñadores',
-      'Los leñadores y las máquinas de DEFORESTA S.A. cruzan el río para talar el Mangle madre. Toca las gotas de agua que trae la corriente y planta defensores en la tierra verde de la isla.\n¿Primera vez? Empieza por el tutorial.',
-      { eyebrow: 'Experiencia RA · Meta Quest' }
-    );
+    // inicio (wireframe): idioma arriba, chigüiro constructor, "Ver tutorial" y "Jugar"
+    this.start = new StartScreen({ onTutorial: () => actions.tutorial(), onPlay: () => actions.choose(), onRelocate: () => actions.relocate() });
 
     this.lose = new Panel3D({
       w: 0.48,
@@ -47,18 +37,19 @@ export class Hud {
       ],
     });
 
+    this.menu.setText(tr('Pausa'), tr('El juego está en pausa.'), { eyebrow: 'Amazonas vs Leñadores' });
     this.select = new TeamSelect({ onPlay: (team) => actions.play(team), onRelocate: () => actions.relocate() });
-    this.pycon = new PyconCard({ onNext: () => actions.next(), onReplay: () => actions.replay(), onRelocate: () => actions.relocate() });
+    this.pycon = new PyconCard({ onNext: () => actions.next(), onReplay: () => actions.replay(), onRelocate: () => actions.relocate(), onExit: () => actions.home() });
 
     // el borde inferior queda a ~12 cm de la mesa para que la ceiba y los animales plantados no lo atraviesen
-    const panelH = new Map([[this.start, 0.29], [this.lose, 0.27], [this.menu, 0.22], [this.pycon, 0.33]]);
+    const panelH = new Map([[this.start, 0.3], [this.lose, 0.27], [this.menu, 0.22], [this.pycon, 0.33]]);
     for (const [p, h] of panelH) {
-      p.position.set(0, 0.125 + h / 2, 0.13); // delante del Mangle madre
+      p.position.set(0, 0.125 + h / 2, 0.13); // delante del centro de la isla
       p.rotation.x = -0.25;
       p.visible = false;
       board.root.add(p);
     }
-    this.select.position.set(0, 0.3, 0.12);
+    this.select.position.set(0, 0.33, 0.12);
     this.select.rotation.x = -0.25;
     board.root.add(this.select);
 
@@ -83,6 +74,17 @@ export class Hud {
 
     this.xrOnly = [this.start.buttons[2], this.lose.buttons[2], this.menu.buttons[2], this.menu.buttons[3]];
     this.panels = [this.start, this.lose, this.menu, this.pycon, this.select];
+    this.game = null;
+    // al cambiar de idioma se vuelve a dibujar lo que esté en pantalla
+    onLang(() => {
+      this.start.redraw();
+      this.setScanText();
+      this.menu.setText(tr('Pausa'), tr('El juego está en pausa.'), { eyebrow: 'Amazonas vs Leñadores' });
+      this.select.relang();
+      if (!this.game) return;
+      if (this.pycon.visible && this.lastInfo) this.pycon.open(this.lastInfo);
+      if (this.lose.visible && this.lastInfo) this.showLose(this.lastInfo);
+    });
   }
 
   setXR(isXR) {
@@ -114,6 +116,7 @@ export class Hud {
   }
 
   showSelect(game) {
+    this.game = game;
     this.hideBoardPanels();
     this.lastScreen = 'select';
     this.select.open(game.info(), game.team);
@@ -131,8 +134,8 @@ export class Hud {
     this.lastScreen = 'lose';
     this.lastInfo = info;
     const fact = FACTS[Math.floor(Math.random() * FACTS.length)];
-    this.lose.setText('Talaron el Mangle madre…', `DEFORESTA S.A. cruzó el río y llegó al centro de la isla. Prueba otro equipo o vuelve a intentarlo.\n¿Sabías que…? ${fact}`, {
-      eyebrow: info.tutorial ? 'Tutorial' : `Nivel ${info.level} · ${info.name}`,
+    this.lose.setText(tr('Arrasaron el corazón de la isla…'), `${tr('DEFORESTA S.A. cruzó el río y llegó al centro de la isla. Prueba otro equipo o vuelve a intentarlo.')}\n${tr('¿Sabías que…?')} ${tr(fact)}`, {
+      eyebrow: info.tutorial ? tr('Tutorial') : tr(`Nivel ${info.level} · ${info.name}`),
       accent: PY.danger,
     });
     this.lose.show();
@@ -147,7 +150,12 @@ export class Hud {
     const key = title + body;
     if (key === this._scan) return;
     this._scan = key;
-    this.scan.setText(title, body, { eyebrow: 'Realidad aumentada' });
+    this._scanText = [title, body];
+    this.setScanText();
+  }
+  setScanText() {
+    if (!this._scanText) return;
+    this.scan.setText(tr(this._scanText[0]), tr(this._scanText[1]), { eyebrow: tr('Realidad aumentada') });
   }
 
   showScan() {

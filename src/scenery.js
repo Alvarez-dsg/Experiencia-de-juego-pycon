@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { BOARD, LAYOUT, ISLAND } from './config.js';
 import { GeoBuilder, mulberry32, seg, cyl, ball, cone, capsule, rbox, eye, blush, CLIP, toon, pick, U } from './models.js';
+import { asset } from './assets.js';
 import { regionAt, groundAt, depthAt, bankZ, frontZ, LAND, colX, rowZ, CELL, ROWS, COLS, WATER_Y, LAND_Y, BANK_Y } from './terrain.js';
 
 const L = LAYOUT;
@@ -102,6 +103,29 @@ export function buildSkirt() {
 
 /** Superficie del río con una textura de corriente que se desplaza. */
 export function buildWater() {
+  // Textura del río de la página interactiva de PyCon 2028 (mapa de normales): ondas que corren con la corriente
+  const normal = new THREE.TextureLoader().load(import.meta.env.BASE_URL + 'tex/agua_n.jpg');
+  normal.wrapS = normal.wrapT = THREE.RepeatWrapping;
+  normal.repeat.set(5, 4);
+  const mat = new THREE.MeshPhongMaterial({
+    color: '#4fa9c4',
+    specular: '#e8fbff',
+    shininess: 90,
+    normalMap: normal,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    transparent: true,
+    opacity: 0.62,
+    depthWrite: false,
+    clippingPlanes: CLIP,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(L.totalW, L.totalD).rotateX(-Math.PI / 2), mat);
+  mesh.position.y = WATER_Y;
+  mesh.renderOrder = 2;
+  return mesh;
+}
+
+/** (Ya no se usa) agua dibujada en un canvas. */
+export function buildWaterCanvas() {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 256;
@@ -139,14 +163,99 @@ export function buildWater() {
 }
 
 /** Casillas de la isla donde se puede plantar (cuadros redondeados un poco más claros). */
-export function buildTiles() {
+export function buildTiles(row = null) {
   const b = new GeoBuilder();
   for (let r = 0; r < ROWS; r++) {
+    if (row !== null && r !== row) continue;
     for (let c = 0; c < COLS; c++) {
       if (!LAND[r][c]) continue;
       b.add(rbox(0.3), (r + c) % 2 ? '#79c962' : '#6dc157', { p: [colX(c), LAND_Y + 0.0006, rowZ(r)], s: [CELL * 0.9, 0.0018, CELL * 0.9] });
     }
   }
+  return b.parts.length ? b.build() : null;
+}
+
+// ───────────────────────── vegetación de la landing de PyCon 2028 ─────────────────────────
+const _vm = new THREE.Matrix4();
+const _vq = new THREE.Quaternion();
+const _vy = new THREE.Vector3(0, 1, 0);
+const _vp = new THREE.Vector3();
+const _vs = new THREE.Vector3();
+/** Pone un modelo de la landing (public/models/vegetacion.glb) a escala k (1 = su tamaño en casillas). */
+function veg(b, name, x, y, z, k = 1, yaw = 0) {
+  const g = asset(name);
+  if (!g) return false;
+  _vm.compose(_vp.set(x, y, z), _vq.setFromAxisAngle(_vy, yaw), _vs.set(k * U, k * U, k * U));
+  b.addBuilt(g, _vm);
+  return true;
+}
+
+/** Vegetación (sin contorno): pasto de la isla, matas de la orilla de selva, lirios y raíces de mangle. */
+export function buildVegetation() {
+  const R = mulberry32(77);
+  const b = new GeoBuilder(R);
+  if (!asset('pasto')) return null;
+  const grass = (x, z, k) => veg(b, 'pasto', x, groundAt(x, z) - 0.0005, z, k, R() * 6.28);
+  // ── isla: mucho pasto en las esquinas de las casillas y en el borde de la tierra ──
+  for (let r = 0; r <= ROWS; r++) {
+    for (let c = 0; c <= COLS; c++) {
+      const x = LAYOUT.gridX0 + c * CELL + (R() - 0.5) * CELL * 0.12;
+      const z = LAYOUT.gridZ0 + r * CELL + (R() - 0.5) * CELL * 0.12;
+      if (regionAt(x, z) === 'land') grass(x, z, 0.55 + R() * 0.25);
+    }
+  }
+  // pasto suelto por toda la isla, sin tapar el centro de las casillas
+  for (let i = 0; i < 260; i++) {
+    const x = ISLAND.cx + (R() * 2 - 1) * ISLAND.landA;
+    const z = ISLAND.cz + (R() * 2 - 1) * ISLAND.landB;
+    if (regionAt(x, z) !== 'land') continue;
+    const fx = (x - LAYOUT.gridX0) / CELL - 0.5;
+    const fz = (z - LAYOUT.gridZ0) / CELL - 0.5;
+    const inGrid = fx > -0.5 && fx < COLS - 0.5 && fz > -0.5 && fz < ROWS - 0.5;
+    const near = Math.hypot(fx - Math.round(fx), fz - Math.round(fz));
+    if (inGrid && near < 0.28) continue;
+    grass(x, z, 0.4 + R() * 0.35);
+  }
+  for (let i = 0; i < 110; i++) {
+    const a = R() * Math.PI * 2;
+    const k = 0.86 + R() * 0.16;
+    const x = ISLAND.cx + Math.cos(a) * ISLAND.landA * k;
+    const z = ISLAND.cz + Math.sin(a) * ISLAND.landB * k;
+    const reg = regionAt(x, z);
+    if (reg === 'land' || reg === 'sand') grass(x, z, 0.6 + R() * 0.4);
+  }
+  // raíces de mangle, helechos y bromelias en la arena de la isla
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + R() * 0.3;
+    const x = ISLAND.cx + Math.cos(a) * ISLAND.sandA * 0.95;
+    const z = ISLAND.cz + Math.sin(a) * ISLAND.sandB * 0.95;
+    if (i % 3 === 0) veg(b, 'raices', x, WATER_Y - 0.002, z, 0.32 + R() * 0.08, R() * 6.28);
+    else veg(b, i % 3 === 1 ? 'helecho' : 'bromelia', x, groundAt(x, z), z, 0.5 + R() * 0.2, R() * 6.28);
+  }
+  // ── río: victorias amazónicas y camalotes en lo bajito ──
+  for (let i = 0; i < 16; i++) {
+    const x = L.left + 0.03 + R() * (L.totalW - 0.06);
+    const front = R() < 0.6;
+    const z = front ? frontZ(x) - 0.012 - R() * 0.02 : bankZ(x) + 0.012 + R() * 0.015;
+    if (regionAt(x, z) !== 'water' || depthAt(x, z) > 0.4) continue;
+    if (R() < 0.6) veg(b, R() < 0.5 ? 'victoria' : 'victoria_b', x, WATER_Y + 0.0006, z, 0.22 + R() * 0.12, R() * 6.28);
+    else veg(b, 'camalote', x, WATER_Y - 0.001, z, 0.45 + R() * 0.2, R() * 6.28);
+  }
+  // ── orilla de selva (la del usuario): matas bajas para no tapar el juego, más altas en las esquinas ──
+  const lows = ['helecho', 'heliconia_pl', 'bromelia', 'musgo_a', 'musgo_b', 'flores', 'orquidea', 'pasto', 'pasto', 'hongos'];
+  for (let x = L.left + 0.012; x < L.right - 0.008; x += 0.026 + R() * 0.012) {
+    for (let k = 0; k < 2; k++) {
+      const z = frontZ(x) + 0.012 + R() * (L.front - frontZ(x) - 0.024);
+      const name = pick(lows, R);
+      veg(b, name, x + (R() - 0.5) * 0.01, BANK_Y, z, name === 'heliconia_pl' ? 0.5 : 0.55 + R() * 0.25, R() * 6.28);
+    }
+  }
+  for (const [x, name, k] of [[L.left + 0.05, 'helecho_arb', 0.75], [L.right - 0.05, 'cecropia', 0.62], [L.left + 0.13, 'aguaje', 0.5], [L.right - 0.14, 'helecho_arb', 0.6]]) {
+    veg(b, name, x, BANK_Y, L.front - 0.035, k, R() * 6.28);
+  }
+  // lo poco que DEFORESTA S.A. aún no ha talado al fondo
+  veg(b, 'aguaje', L.left + 0.04, BANK_Y, L.back + 0.04, 0.55, 1);
+  veg(b, 'tronco', L.left + 0.2, BANK_Y, L.back + 0.06, 0.6, 0.3);
   return b.build();
 }
 
@@ -232,8 +341,8 @@ export function buildProps() {
     if (R() < 0.5) reed(b, x, z, 0.018 + R() * 0.012, WATER_Y - 0.002);
     else b.add(cyl(0.006, 0.006), '#4caf50', { p: [x, WATER_Y + 0.0006, z - 0.01], s: [1, 0.001, 1] }); // hoja de lirio
   }
-  // ── isla: raíces de mangle y juncos en la arena ──
-  for (let i = 0; i < 16; i++) {
+  // ── isla: raíces de mangle y juncos en la arena (si no cargó la vegetación de la landing) ──
+  for (let i = 0; i < 16 && !asset('pasto'); i++) {
     const a = (i / 16) * Math.PI * 2 + R() * 0.2;
     const x = ISLAND.cx + Math.cos(a) * ISLAND.sandA * 0.93;
     const z = ISLAND.cz + Math.sin(a) * ISLAND.sandB * 0.93;
@@ -247,8 +356,8 @@ export function buildProps() {
     b.add(ball(), '#e2492f', { p: [x, WATER_Y + 0.003, z], s: [0.008, 0.004, 0.006] });
     for (const s of [-1, 1]) b.add(ball(), '#e2492f', { p: [x + 0.004, WATER_Y + 0.004, z + s * 0.004], s: 0.003 });
   }
-  // ── orilla de selva (la del usuario): matas bajas para no tapar el juego ──
-  for (let x = L.left + 0.01; x < L.right; x += 0.022 + R() * 0.01) {
+  // ── orilla de selva (la del usuario): matas bajas (solo si no cargó la vegetación de la landing) ──
+  for (let x = L.left + 0.01; x < L.right && !asset('pasto'); x += 0.022 + R() * 0.01) {
     const z = frontZ(x) + 0.01 + R() * (L.front - frontZ(x) - 0.02);
     if (R() < 0.75) bush(b, x, z, 0.006 + R() * 0.005, BANK_Y, R);
     else b.add(cone(0.004, 0.016, 8), '#2f8a3a', { p: [x, BANK_Y + 0.008, z] });
@@ -295,7 +404,24 @@ export function buildCompany() {
   return { geo: b.build(), smoke: new THREE.Vector3(chx, y0 + bh + 0.075, bz), signCenter };
 }
 
-// ───────────────────────── MANGLE MADRE ─────────────────────────
+// ───────────────────────── CORAZÓN DE LA ISLA ─────────────────────────
+/** El centro de la isla que hay que proteger: una pradera tupida de pasto y flores (sin árbol). */
+export function buildMeadow() {
+  const R = mulberry32(93);
+  const b = new GeoBuilder(R);
+  if (!asset('pasto')) return null;
+  for (let i = 0; i < 64; i++) {
+    const a = R() * Math.PI * 2;
+    const r = Math.sqrt(R()) * 0.98;
+    const x = Math.cos(a) * r * CELL;
+    const z = Math.sin(a) * r * CELL * 0.95;
+    const name = i % 8 === 0 ? 'heliconia_pl' : i % 6 === 0 ? 'flores' : i % 11 === 0 ? 'helecho' : 'pasto';
+    veg(b, name, x, 0, z, (name === 'pasto' ? 0.9 + R() * 0.6 : 0.45 + R() * 0.2) * (1.15 - r * 0.35), R() * 6.28);
+  }
+  return b.build();
+}
+
+// ───────────────────────── MANGLE MADRE (respaldo si no cargan los modelos) ─────────────────────────
 /** El árbol que hay que proteger: mangle con raíces zancudas y cara amable (mira al usuario, +z). */
 export function buildHeart() {
   const b = new GeoBuilder(mulberry32(91));
@@ -342,3 +468,4 @@ export function buildHeart() {
 }
 
 export const HEART_TOP = 2.4 * U;
+export const MEADOW_TOP = 0.75 * U;

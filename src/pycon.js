@@ -3,6 +3,7 @@
 // Estilo de la tarjeta de ponente de la página: crema, borde naranja, foto en panel salvia,
 // ceja en mayúsculas, título de la charla en un recuadro y etiquetas.
 import * as THREE from 'three';
+import { tr } from './i18n.js';
 import { CanvasPlane, Button3D, PY, FONT, roundRect, wrapText, fitFont, drawEyebrow, drawPyBrand, drawPyLogo, drawAvatarBg, drawCard, popIn } from './ui3d.js';
 
 const BASE = import.meta.env.BASE_URL || './';
@@ -93,7 +94,7 @@ export function preloadPycon() {
 }
 
 export class PyconCard extends THREE.Group {
-  constructor({ onNext, onRelocate, onReplay }) {
+  constructor({ onNext, onRelocate, onReplay, onExit }) {
     super();
     this.w = 0.56;
     this.h = 0.33;
@@ -101,10 +102,12 @@ export class PyconCard extends THREE.Group {
     this.bg.renderOrder = 10;
     this.add(this.bg);
     const y = -this.h / 2 + 0.036;
-    this.nextBtn = new Button3D({ label: 'Siguiente nivel', w: 0.17, h: 0.044, onPress: () => onNext() });
-    this.replayBtn = new Button3D({ label: 'Jugar de nuevo', w: 0.17, h: 0.044, onPress: () => onReplay() });
-    this.relocBtn = new Button3D({ label: 'Recolocar', w: 0.11, h: 0.044, variant: 'outline', onPress: () => onRelocate() });
-    this.buttons = [this.nextBtn, this.replayBtn, this.relocBtn];
+    // wireframe: "Salir" (a la pantalla de inicio) y "Siguiente nivel"
+    this.exitBtn = new Button3D({ label: 'Salir', w: 0.13, h: 0.046, variant: 'outline', onPress: () => onExit?.() });
+    this.nextBtn = new Button3D({ label: 'Siguiente nivel', w: 0.17, h: 0.046, onPress: () => onNext() });
+    this.replayBtn = new Button3D({ label: 'Jugar de nuevo', w: 0.17, h: 0.046, onPress: () => onReplay() });
+    this.relocBtn = new Button3D({ label: 'Recolocar', w: 0.11, h: 0.046, variant: 'outline', onPress: () => onRelocate() });
+    this.buttons = [this.exitBtn, this.relocBtn, this.nextBtn, this.replayBtn];
     for (const b of this.buttons) {
       b.position.set(0, y, 0.004);
       this.add(b);
@@ -155,7 +158,11 @@ export class PyconCard extends THREE.Group {
     this.visible = false;
   }
 
-  draw(card, info, img) {
+  draw(cardEs, info, img) {
+    // textos de la tarjeta en el idioma elegido
+    const card = { ...cardEs };
+    for (const k of ['kicker', 'name', 'role', 'talkLabel', 'talk', 'text', 'hook']) if (card[k]) card[k] = tr(card[k]);
+    if (card.tags) card.tags = card.tags.map((t) => tr(t));
     this.bg.draw((ctx, W, H) => {
       const pad = W * 0.008;
       drawCard(ctx, pad, pad, W - pad * 2, H - pad * 2, H * 0.08, { lw: H * 0.008 });
@@ -213,11 +220,11 @@ export class PyconCard extends THREE.Group {
       const tw = W - tx - W * 0.045;
       const brandX = W - W * 0.045 - H * 0.33;
       drawPyBrand(ctx, brandX, H * 0.1, H * 0.06);
-      const eyebrow = info.last ? card.kicker : `Nivel ${info.level} superado`;
+      const eyebrow = info.last ? card.kicker : tr(`Nivel ${info.level} superado`);
       drawEyebrow(ctx, eyebrow, tx, H * 0.1, H * 0.028, { maxW: brandX - tx - W * 0.02 });
       ctx.textAlign = 'left';
       ctx.fillStyle = PY.ink;
-      const title = info.last ? 'PyCon Colombia 2028' : 'Conoce PyCon Colombia 2028';
+      const title = info.last ? 'PyCon Colombia 2028' : tr('Conoce PyCon Colombia 2028');
       fitFont(ctx, title, tw * 0.95, H * 0.07, 600);
       ctx.fillText(title, tx, H * 0.2);
       // recuadro de la charla
@@ -267,7 +274,7 @@ export class PyconCard extends THREE.Group {
       // dato del juego
       ctx.fillStyle = PY.ink;
       ctx.font = `500 ${H * 0.03}px ${FONT}`;
-      const line = card.hook ? `${card.hook} Invasores detenidos: ${info.kills}.` : `Superaste los ${info.total} niveles y detuviste a ${info.kills} invasores en el último.`;
+      const line = card.hook ? `${card.hook} ${tr('Invasores detenidos: {n}.', { n: info.kills })}` : tr('Superaste los {t} niveles y detuviste a {n} invasores en el último.', { t: info.total, n: info.kills });
       let hy = gy + H * 0.098;
       for (const l of wrapText(ctx, line, tw).slice(0, 2)) {
         ctx.fillText(l, tx, hy);

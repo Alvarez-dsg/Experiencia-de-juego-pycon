@@ -13,6 +13,8 @@ import { sfx } from './audio.js';
 import { LEVELS } from './levels.js';
 import { TEAM } from './config.js';
 import { preloadPycon } from './pycon.js';
+import { loadAssets } from './assets.js';
+import { tr, onLang, getLang, setLang } from './i18n.js';
 
 // Modo de prueba en PC (solo con `npm run dev`): emula unas Meta Quest 3 con el runtime oficial de Meta (IWER).
 //   ?emular       → gafas + manos emuladas (sin mesas)
@@ -41,6 +43,7 @@ await Promise.race([
   new Promise((r) => setTimeout(r, 2500)),
 ]).catch(() => {});
 preloadPycon();
+await loadAssets(); // modelos de Blender (animales) y vegetación de la landing
 
 // ?nivel=N empieza en el nivel N (para probar; 0 = tutorial)
 const START_LEVEL = Math.max(0, Math.min(LEVELS.length - 1, parseInt(new URLSearchParams(location.search).get('nivel') ?? '1', 10) || 0));
@@ -61,9 +64,9 @@ document.getElementById('app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 50);
-camera.position.set(-0.13, 1.43, 1.0); // un poco a la izquierda para ver también la bandeja
+camera.position.set(-0.3, 1.47, 1.12); // a la izquierda para ver también la bandeja vertical
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(-0.11, 0.81, -0.05);
+controls.target.set(-0.17, 0.87, -0.03);
 controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
 controls.enableDamping = true;
 controls.enablePan = false;
@@ -175,6 +178,15 @@ const actions = {
     game.setLevel(1);
     actions.choose();
   },
+  /** "Salir" en la tarjeta entre niveles: vuelve a la pantalla de inicio. */
+  home() {
+    interaction.cancelAll();
+    if (game.state !== 'idle') game.reset();
+    game.setLevel(Math.max(1, game.levelIdx));
+    app.endPending = 0;
+    showTray(false);
+    hud.showStart();
+  },
   resume() {
     game.resume();
     hud.playing();
@@ -207,6 +219,20 @@ const actions = {
 };
 
 const hud = new Hud(board, scene, actions);
+document.documentElement.lang = getLang();
+onLang(() => tray.relang(game));
+// portada HTML: los elementos con data-en cambian de idioma; los botones de la píldora eligen el idioma
+const htmlEs = new Map();
+function applyHtmlLang() {
+  for (const el of document.querySelectorAll('[data-en]')) {
+    if (!htmlEs.has(el)) htmlEs.set(el, el.innerHTML);
+    el.innerHTML = getLang() === 'en' ? el.dataset.en : htmlEs.get(el);
+  }
+  for (const b of document.querySelectorAll('[data-lang]')) b.classList.toggle('on', b.dataset.lang === getLang());
+}
+for (const b of document.querySelectorAll('[data-lang]')) b.addEventListener('click', () => setLang(b.dataset.lang));
+onLang(applyHtmlLang);
+applyHtmlLang();
 hud.setXR(false);
 const input = new InputManager(renderer, scene, camera, renderer.domElement);
 const interaction = new Interaction({ scene, game, board, tray });
@@ -216,7 +242,7 @@ game.on.waterGained = () => tray.pulseLuz();
 game.on.banner = (b) => {
   // los pasos del tutorial se quedan hasta que se cumplen
   const dur = b.hold ? 9999 : b.ok ? 1.3 : b.big ? 3.6 : 2.8;
-  hud.banner.show(b.text, b.sub, b.big, dur, b.ok);
+  hud.banner.show(tr(b.text), tr(b.sub || ''), b.big, dur, b.ok);
   if (b.ok) sfx.collect();
   else sfx.banner(b.big);
 };
@@ -371,21 +397,23 @@ document.getElementById('btn-desktop').addEventListener('click', () => {
 document.getElementById('btn-help').addEventListener('click', () => document.body.classList.remove('playing'));
 renderer.domElement.addEventListener('pointerdown', () => sfx.unlock());
 
+let statusKey = '';
 (async () => {
   let ok = false;
   if (!window.isSecureContext) {
-    status.textContent = 'Para entrar en RA abre esta página con HTTPS (o desde localhost).';
+    status.textContent = tr((statusKey = 'Para entrar en RA abre esta página con HTTPS (o desde localhost).'));
   } else if (!navigator.xr) {
-    status.textContent = 'Este navegador no tiene WebXR. Ábrelo en el navegador de Meta Quest. Mientras tanto, prueba el modo navegador.';
+    status.textContent = tr((statusKey = 'Este navegador no tiene WebXR. Ábrelo en el navegador de Meta Quest. Mientras tanto, prueba el modo navegador.'));
   } else {
     try {
       ok = await navigator.xr.isSessionSupported('immersive-ar');
     } catch (e) {
       ok = false;
     }
-    status.textContent = ok ? 'Listo: tu dispositivo soporta realidad aumentada.' : 'Este dispositivo no soporta RA inmersiva. Usa unas Meta Quest o prueba el modo navegador.';
+    status.textContent = ok ? tr((statusKey = 'Listo: tu dispositivo soporta realidad aumentada.')) : tr((statusKey = 'Este dispositivo no soporta RA inmersiva. Usa unas Meta Quest o prueba el modo navegador.'));
   }
   status.className = ok ? 'status ok' : 'status warn';
+  onLang(() => statusKey && (status.textContent = tr(statusKey)));
   btnAR.disabled = !ok;
   btnARMini.hidden = !ok;
 })();
@@ -423,7 +451,7 @@ function tick(dt, frame = null) {
   if (app.trayAppear < 1) {
     app.trayAppear = Math.min(1, app.trayAppear + dt * 3);
     const t = app.trayAppear;
-    tray.scale.setScalar(Math.max(0.01, 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2)));
+    tray.scale.setScalar(Math.max(0.01, 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2)) * (tray.baseScale ?? 1));
   }
   if (app.endPending > 0) {
     app.endPending -= dt;
@@ -434,7 +462,7 @@ function tick(dt, frame = null) {
         // tutorial superado: directo a elegir el equipo del nivel 1
         game.setLevel(1);
         actions.choose();
-        hud.banner.show('¡Tutorial completado!', 'Elige 5 defensores para el nivel 1', true, 3.5);
+        hud.banner.show(tr('¡Tutorial completado!'), tr('Elige 5 defensores para el nivel 1'), true, 3.5);
       } else if (app.endWon) hud.showWin(app.endInfo);
       else hud.showLose(app.endInfo);
     }

@@ -97,10 +97,17 @@ export class Game {
     this.state = 'idle';
   }
 
+  /** ¿Se puede plantar en la fila r en este nivel? (al principio solo 2 filas; se abre una más por nivel) */
+  rowOpen(r) {
+    const rows = this.level?.rows;
+    return !rows || rows.includes(r);
+  }
+
   /** Empieza (o reinicia) el nivel `i` con el equipo actual. */
   start(i = this.levelIdx) {
     this.setLevel(i);
     this.reset();
+    this.board.setRows?.(this.level.rows);
     if (this.level.tutorial) this.tut = new Tutorial(this);
     this.state = 'playing';
   }
@@ -130,6 +137,7 @@ export class Game {
   /** null si se puede plantar en (r, c); si no, el motivo. */
   whyCantCell(r, c) {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS || !LAND[r][c]) return 'arena';
+    if (!this.rowOpen(r)) return 'cerrada';
     if (this.grid[r][c]) return 'ocupada';
     return null;
   }

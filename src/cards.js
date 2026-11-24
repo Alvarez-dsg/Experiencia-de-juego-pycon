@@ -7,8 +7,24 @@ import { PLANTS, ABILITIES } from './config.js';
 import { MATS, addOutline, setGeometry } from './models.js';
 import { plantGeometry } from './defenders.js';
 import { CanvasPlane, PY, FONT, roundRect, wrapText, fitFont, drawSun, drawEyebrow, drawAvatarBg, drawCard, drawPyBrand } from './ui3d.js';
+import { tr } from './i18n.js';
 
 export const SHOVEL = { name: 'Pala', short: 'Pala', kind: 'shovel', cost: 0 };
+// Lo que hace cada personaje, en dos o tres palabras (cartas mínimas del wireframe)
+export const SHORT = {
+  heliconia: 'Da agua',
+  achiote: 'Frena y hiere',
+  rana: 'Defensa a distancia',
+  ceiba: 'Muro resistente',
+  mariposa: 'Cura a su equipo',
+  chiguiro: 'Muerde de cerca',
+  mono: 'Salta y golpea',
+  guacamaya: 'Tiro triple',
+  tortuga: 'Rueda y aplasta',
+  anaconda: 'Atrapa y aprieta',
+  jabillo: 'Lánzalo: explota',
+  shovel: 'Quita un defensor',
+};
 export const defOf = (type) => (type === 'shovel' ? SHOVEL : PLANTS[type]);
 
 // Tono del fondo "avatar" de cada personaje (como las fotos de la página)
@@ -216,7 +232,7 @@ export function drawSeedCard(ctx, W, H, type, st = {}) {
   ctx.fillStyle = PY.ink;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const name = def.short || def.name;
+  const name = tr(def.short || def.name);
   fitFont(ctx, name, W * 0.8, H * 0.066, 600);
   ctx.fillText(name, W / 2, H * 0.68);
   // costo con la luz
@@ -242,7 +258,8 @@ export function drawSeedCard(ctx, W, H, type, st = {}) {
     ctx.fillStyle = PY.greenDark;
     ctx.textAlign = 'center';
     ctx.font = `600 ${H * 0.07}px ${FONT}`;
-    ctx.fillText('Quitar', W / 2, H * 0.818);
+    fitFont(ctx, tr('Quitar'), W * 0.56, H * 0.07, 600);
+    ctx.fillText(tr('Quitar'), W / 2, H * 0.818);
   }
   badge(ctx, roleOf(type), W * 0.17, H * 0.11, W * 0.12);
   if (st.picked) {
@@ -297,13 +314,13 @@ export class AbilityCard extends THREE.Group {
     this.bg = new CanvasPlane(w, h, 2600);
     this.bg.renderOrder = 11;
     this.add(this.bg);
-    // ventana del arte: 14 %–56 % del alto
-    this.artH = h * 0.42;
+    // ventana del arte: 5 %–67 % del alto (carta mínima)
+    this.artH = h * 0.62;
     const m = cardModel('heliconia', this.artH * 0.72, w * 0.6, tilt);
     this.pivot = m.pivot;
     this.spin = m.spin;
     this.mesh = m.mesh;
-    this.pivot.position.set(0, h / 2 - h * 0.525, 0.014);
+    this.pivot.position.set(0, h / 2 - h * 0.62, 0.014);
     this.add(this.pivot);
     this.type = null;
     this.t = 0;
@@ -315,6 +332,50 @@ export class AbilityCard extends THREE.Group {
     fitModel(this.mesh, type, this.artH * 0.72, this.w * 0.6);
     this.spin.rotation.y = -0.55;
     this.t = 0;
+    const def = defOf(type);
+    this.bg.draw((ctx, W, H) => {
+      // carta mínima (wireframe): arte grande, nombre y lo que hace en dos o tres palabras
+      const pad = W * 0.02;
+      drawCard(ctx, pad, pad, W - pad * 2, H - pad * 2, W * 0.07, { lw: W * 0.012, border: PY.green });
+      roundRect(ctx, W * 0.07, H * 0.05, W * 0.86, H * 0.62, W * 0.05);
+      ctx.save();
+      ctx.clip();
+      drawAvatarBg(ctx, W * 0.07, H * 0.05, W * 0.86, H * 0.62, hueOf(type), 0);
+      ctx.restore();
+      roundRect(ctx, W * 0.07, H * 0.05, W * 0.86, H * 0.62, W * 0.05);
+      ctx.lineWidth = W * 0.008;
+      ctx.strokeStyle = PY.green;
+      ctx.stroke();
+      ctx.fillStyle = PY.ink;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const name = tr(def.name);
+      fitFont(ctx, name, W * 0.84, H * 0.06, 700);
+      ctx.fillText(name, W / 2, H * 0.735);
+      const what = tr(SHORT[type] || '');
+      ctx.fillStyle = PY.greenDark;
+      fitFont(ctx, what, W * 0.86, H * 0.075, 500);
+      ctx.fillText(what, W / 2, H * 0.825);
+      if (type !== 'shovel') {
+        const label = String(def.cost);
+        ctx.font = `800 ${H * 0.05}px ${FONT}`;
+        const cw = ctx.measureText(label).width + H * 0.1;
+        roundRect(ctx, W / 2 - cw / 2, H * 0.875, cw, H * 0.07, H * 0.035);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = W * 0.008;
+        ctx.strokeStyle = PY.green;
+        ctx.stroke();
+        ctx.fillStyle = PY.ink;
+        ctx.textAlign = 'left';
+        ctx.fillText(label, W / 2 - cw / 2 + H * 0.02, H * 0.912);
+        drawSun(ctx, W / 2 + cw / 2 - H * 0.04, H * 0.91, H * 0.022);
+      }
+    });
+  }
+
+  /** (Ya no se usa) carta de habilidad con texto largo. */
+  showLong(type) {
     const def = defOf(type);
     const ab = ABILITIES[type];
     this.bg.draw((ctx, W, H) => {

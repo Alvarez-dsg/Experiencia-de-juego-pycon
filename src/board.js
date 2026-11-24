@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { BOARD, LAYOUT, ISLAND } from './config.js';
 import { MATS, riseClip, addOutline, createHpBar, toon } from './models.js';
-import { buildTerrain, buildSkirt, buildWater, buildTiles, buildProps, buildCompany, buildHeart, HEART_TOP, SIGN_YAW } from './scenery.js';
+import { buildTerrain, buildSkirt, buildWater, buildTiles, buildProps, buildCompany, buildHeart, buildMeadow, buildVegetation, HEART_TOP, MEADOW_TOP, SIGN_YAW } from './scenery.js';
 import { cellAt, colX, rowZ, LAND_Y, HEART } from './terrain.js';
 import { CanvasPlane, FONT, roundRect } from './ui3d.js';
 import { sfx } from './audio.js';
@@ -35,8 +35,16 @@ export class Board {
     };
     add(buildTerrain(), terrainMat);
     add(buildSkirt(), new THREE.MeshLambertMaterial({ vertexColors: true, clippingPlanes: [riseClip], side: THREE.DoubleSide }));
-    add(buildTiles(), terrainMat);
+    // casillas por fila: solo se ven las filas abiertas en el nivel actual
+    this.rowTiles = [];
+    for (let r = 0; r < BOARD.rows; r++) {
+      const g = buildTiles(r);
+      this.rowTiles.push(g ? add(g, terrainMat) : null);
+    }
     add(buildProps(), MATS.std, 0.0007);
+    // vegetación de la landing de PyCon 2028 (hojas finas: sin contorno y por las dos caras)
+    const vegGeo = buildVegetation();
+    if (vegGeo) add(vegGeo, toon({ side: THREE.DoubleSide }));
     const comp = buildCompany();
     add(comp.geo, MATS.std, 0.0009);
     this.smokeOrigin = comp.smoke;
@@ -84,14 +92,17 @@ export class Board {
     });
     this.content.add(this.sign);
 
-    // Mangle madre (lo que hay que proteger)
+    // lo que hay que proteger
     this.heart = new THREE.Group();
     this.heart.position.set(HEART.x, LAND_Y - 0.0005, HEART.z);
-    this.heartMesh = new THREE.Mesh(buildHeart(), MATS.std);
-    addOutline(this.heartMesh, 0.0009);
+    // corazón de la isla: una pradera tupida (si no cargó la vegetación, el Mangle madre de antes)
+    const meadow = buildMeadow();
+    this.heartMesh = new THREE.Mesh(meadow || buildHeart(), meadow ? toon({ side: THREE.DoubleSide }) : MATS.std);
+    if (!meadow) addOutline(this.heartMesh, 0.0009);
+    this.heartMats = meadow ? { std: this.heartMesh.material, hurt: MATS.hurt, charred: MATS.charred } : MATS;
     this.heart.add(this.heartMesh);
     this.heartBar = createHpBar(0.09, 0.006, '#5fd16a');
-    this.heartBar.group.position.y = HEART_TOP + 0.012;
+    this.heartBar.group.position.y = (meadow ? MEADOW_TOP : HEART_TOP) + 0.012;
     this.heart.add(this.heartBar.group);
     this.content.add(this.heart);
     this.heartT = 0;
@@ -101,12 +112,13 @@ export class Board {
     this.onRisen = null;
   }
 
-  /** Vida del Mangle madre (0..1). */
+  /** Vida del corazón de la isla (0..1). */
   setHeart(f, hit = false) {
     this.heartBar.set(f);
     if (hit) this.heartShake = 0.2;
     const dead = f <= 0;
-    this.heartMesh.material = dead ? MATS.charred : f < 0.3 ? MATS.hurt : MATS.std;
+    const M = this.heartMats;
+    this.heartMesh.material = dead ? M.charred : f < 0.3 ? M.hurt : M.std;
   }
 
   heartPulse(dt, hit) {
@@ -118,6 +130,11 @@ export class Board {
     if (hit && Math.random() < dt * 10) {
       this.fx.emit({ pos: [HEART.x + (Math.random() - 0.5) * 0.06, LAND_Y + 0.1 + Math.random() * 0.04, HEART.z + (Math.random() - 0.5) * 0.05], vel: [(Math.random() - 0.5) * 0.04, -0.03, (Math.random() - 0.5) * 0.04], color: Math.random() < 0.5 ? '#3aa048' : '#7bc96f', size: 0.0028, life: 1.2, grav: -0.1 });
     }
+  }
+
+  /** Muestra solo las casillas de las filas abiertas (las demás quedan como pasto). */
+  setRows(open) {
+    this.rowTiles.forEach((m, r) => m && (m.visible = !open || open.includes(r)));
   }
 
   /** Casilla bajo un punto local; `land` dice si se puede plantar ahí. */
@@ -157,8 +174,8 @@ export class Board {
 
   update(dt) {
     // corriente del río (de izquierda a derecha)
-    const map = this.water.material.map;
-    map.offset.x -= dt * 0.045;
+    const map = this.water.material.normalMap || this.water.material.map;
+    map.offset.x -= dt * 0.03;
     map.offset.y = Math.sin(performance.now() * 0.0004) * 0.01;
 
     if (this.riseT < 1) {

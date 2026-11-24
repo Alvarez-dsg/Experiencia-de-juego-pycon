@@ -1,7 +1,8 @@
 // Niveles: el 0 es el tutorial; del 1 al 5 cada uno trae invasores más fuertes.
 // Las oleadas se generan con una semilla fija, así cada nivel es igual cada vez que se juega.
-// Los invasores llegan desde toda la orilla talada (de forma radial) hacia el Mangle madre.
+// Los invasores llegan desde toda la orilla talada (de forma radial) hacia el corazón de la isla (una pradera en el centro).
 
+// rows: filas de la isla donde se puede plantar (2 al principio y una más por nivel)
 // hpMul: multiplica la vida · count: invasores antes de la gran ola · wave: invasores de la gran ola
 // mix: probabilidad relativa de cada invasor · length: segundos hasta el final de la gran ola
 // boss: invasores que siempre llegan en la gran ola
@@ -10,12 +11,14 @@ export const LEVELS = [
     name: 'Tutorial',
     tutorial: true,
     hpMul: 1,
+    rows: [1, 2], // filas donde se puede plantar
     speedMul: 1,
     startWater: 100,
   },
   {
     name: 'La primera tala',
-    hpMul: 1,
+    hpMul: 1.15,
+    rows: [1, 2], // filas donde se puede plantar
     speedMul: 1,
     length: 150,
     count: 14,
@@ -23,13 +26,14 @@ export const LEVELS = [
     mix: { independiente: 1, profesional: 0.45 },
     tips: [
       { t: 0.3, text: 'Nivel 1 · La primera tala', sub: 'Toca las gotas del río y planta heliconias' },
-      { t: 12, text: 'Llegan por toda la orilla', sub: 'Rodea el Mangle madre con defensores' },
+      { t: 12, text: 'Llegan por toda la orilla', sub: 'Rodea el corazón de la isla con defensores' },
       { t: 60, text: 'Los animales también defienden', sub: 'El mono salta · la tortuga nada · el chigüiro muerde' },
     ],
   },
   {
     name: 'Llegan las motosierras',
-    hpMul: 1.05,
+    hpMul: 1.25,
+    rows: [0, 1, 2], // filas donde se puede plantar
     speedMul: 1,
     length: 160,
     count: 17,
@@ -42,7 +46,8 @@ export const LEVELS = [
   },
   {
     name: 'Las máquinas',
-    hpMul: 1.1,
+    hpMul: 1.3,
+    rows: [0, 1, 2, 3], // filas donde se puede plantar
     speedMul: 1.03,
     length: 170,
     count: 20,
@@ -51,12 +56,13 @@ export const LEVELS = [
     boss: ['excavadora'],
     tips: [
       { t: 0.3, text: 'Nivel 3 · Las máquinas', sub: 'La excavadora aguanta muchísimo: la anaconda la aprieta' },
-      { t: 30, text: '¡Empújalos con la mano!', sub: 'Barre el tablero hacia el río (con mouse: clic sobre ellos)' },
+      { t: 30, text: '¡Empújalos con la mano!', sub: 'Barre con la mano abierta o pellizca y suelta el índice (con mouse: clic)' },
     ],
   },
   {
     name: 'Fiebre de madera',
-    hpMul: 1.15,
+    hpMul: 1.35,
+    rows: [0, 1, 2, 3], // filas donde se puede plantar
     speedMul: 1.05,
     length: 180,
     count: 24,
@@ -69,7 +75,8 @@ export const LEVELS = [
   },
   {
     name: 'La gran tala',
-    hpMul: 1.2,
+    hpMul: 1.4,
+    rows: [0, 1, 2, 3], // filas donde se puede plantar
     speedMul: 1.08,
     length: 190,
     count: 28,

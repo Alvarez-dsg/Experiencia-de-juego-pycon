@@ -5,6 +5,7 @@ import { PLANTS, LAYOUT, TRAY, ECONOMY, HAND, TEAM } from './config.js';
 import { MATS } from './models.js';
 import { CanvasPlane, Button3D, PY, FONT, roundRect, drawSun, drawCard, fitFont } from './ui3d.js';
 import { drawSeedCard, cardModel, fitModel } from './cards.js';
+import { tr } from './i18n.js';
 
 const CARD_W = 0.07;
 const CARD_H = 0.098;
@@ -89,17 +90,27 @@ class SeedCard extends THREE.Group {
 export class Tray extends THREE.Group {
   constructor() {
     super();
-    // side: 'left' (atril bajo al lado izquierdo, cerca del usuario) | 'back' | 'front'
+    // side: 'column' (una sola línea vertical de pie junto a la esquina izquierda, como en el wireframe)
+    //       | 'left' (atril de dos columnas) | 'back' | 'front'
     const side = TRAY.side;
+    const column = side === 'column';
     const left = side === 'left';
     this.left = left;
     const n = TEAM.size + 1; // equipo + pala
     const ROW = 0.108;
+    const STEPV = 0.104;
     const rows = Math.ceil(n / 2);
-    const W = left ? 2 * STEP + 0.05 : 0.04 + 0.08 + 0.016 + n * STEP + 0.07;
-    const H = left ? 0.13 + rows * ROW + 0.02 : 0.122;
+    const W = column ? CARD_W + 0.036 : left ? 2 * STEP + 0.05 : 0.04 + 0.08 + 0.016 + n * STEP + 0.07;
+    const H = column ? 0.06 + 0.12 + n * STEPV + 0.02 : left ? 0.13 + rows * ROW + 0.02 : 0.122;
     this.rotation.order = 'YXZ'; // primero se inclina, luego se gira hacia el usuario
-    if (left) {
+    this.baseScale = column ? TRAY.scale ?? 1 : 1;
+    if (column) {
+      this.tilt = TRAY.tilt;
+      const k = this.baseScale;
+      this.position.set(LAYOUT.left - TRAY.gap - (W / 2) * k, (H / 2) * k * Math.cos(TRAY.tilt) + 0.004, LAYOUT.front - TRAY.fromFront);
+      this.rotation.y = TRAY.yaw;
+      this.scale.setScalar(k);
+    } else if (left) {
       this.tilt = TRAY.tilt;
       this.position.set(LAYOUT.left - TRAY.gap - W / 2, TRAY.height, LAYOUT.front - TRAY.fromFront);
       this.rotation.y = TRAY.yaw;
@@ -144,7 +155,7 @@ export class Tray extends THREE.Group {
     // contador de agua
     this.luzPanel = new CanvasPlane(0.08, 0.1, 3000);
     const yTop = H / 2 - 0.068; // fila superior del atril: agua · pausa/manotazo
-    this.luzPanel.position.set(...(left ? [-STEP / 2, yTop] : [x0 + 0.04 + 0.04, 0]), 0.002);
+    this.luzPanel.position.set(...(column ? [0, H / 2 - 0.06 - 0.062] : left ? [-STEP / 2, yTop] : [x0 + 0.04 + 0.04, 0]), 0.002);
     this.luzPanel.renderOrder = 5;
     this.add(this.luzPanel);
     this._luz = -1;
@@ -154,7 +165,8 @@ export class Tray extends THREE.Group {
     // cartas del equipo + pala
     const cx0 = x0 + 0.04 + 0.08 + 0.016 + STEP / 2;
     // en el atril: dos columnas (la pala en la última casilla)
-    const slot = (i) => (left ? [((i % 2) - 0.5) * STEP, yTop - 0.112 - Math.floor(i / 2) * ROW] : [cx0 + i * STEP, 0]);
+    const slot = (i) =>
+      column ? [0, H / 2 - 0.06 - 0.12 - 0.008 - CARD_H / 2 - i * STEPV] : left ? [((i % 2) - 0.5) * STEP, yTop - 0.112 - Math.floor(i / 2) * ROW] : [cx0 + i * STEP, 0];
     this.cards = TEAM.default.map((type, i) => {
       const c = new SeedCard(type, this.tilt);
       const [x, y] = slot(i);
@@ -173,18 +185,19 @@ export class Tray extends THREE.Group {
     // pausa y manotazo
     const rx = W / 2 - 0.04;
     this.menuBtn = new Button3D({ icon: 'pause', w: 0.05, h: 0.046, variant: 'primary' });
-    this.menuBtn.position.set(...(left ? [STEP / 2, yTop + 0.026] : [rx, 0.026]), 0.006);
+    const yBot = H / 2 - 0.036; // en la bandeja vertical: pausa y empujar arriba del todo
+    this.menuBtn.position.set(...(column ? [-0.026, yBot] : left ? [STEP / 2, yTop + 0.026] : [rx, 0.026]), 0.006);
     this.add(this.menuBtn);
     this.pushPanel = new CanvasPlane(0.056, 0.05, 3000);
-    this.pushPanel.position.set(...(left ? [STEP / 2, yTop - 0.026] : [rx, -0.026]), 0.004);
+    this.pushPanel.position.set(...(column ? [0.026, yBot] : left ? [STEP / 2, yTop - 0.026] : [rx, -0.026]), 0.004);
     this.pushPanel.renderOrder = 5;
     this.add(this.pushPanel);
     this._push = -1;
 
     // barra de avance
     this.progress = new CanvasPlane(0.42, 0.036, 2600);
-    this.progress.position.set(0, H / 2 + (left ? 0.016 : 0.03), 0.0);
-    if (left) this.progress.scale.setScalar(0.5);
+    this.progress.position.set(0, H / 2 + (column ? 0.014 : left ? 0.016 : 0.03), 0.0);
+    if (left || column) this.progress.scale.setScalar(column ? 0.42 : 0.5);
     this.progress.renderOrder = 5;
     this.add(this.progress);
     this._prog = -1;
@@ -200,8 +213,17 @@ export class Tray extends THREE.Group {
       if (team[i] && c.type !== team[i]) c.setType(team[i]);
       c.visible = !!team[i];
     });
-    if (level) this.levelLabel = level.tutorial ? 'Tutorial' : `Nivel ${level.number} · ${level.name}`;
+    if (level) this.level = level;
+    this.levelLabel = !this.level ? tr('Nivel 1') : this.level.tutorial ? tr('Tutorial') : tr(`Nivel ${this.level.number} · ${this.level.name}`);
     this._prog = -1;
+  }
+
+  /** Vuelve a escribir los textos en el idioma elegido. */
+  relang(game) {
+    for (const c of this.allCards) c.setType(c.type);
+    this.setTeam(game.team || this.cards.map((c) => c.type));
+    this._luz = -1;
+    this._push = -1;
   }
 
   drawLuz(v) {
@@ -223,7 +245,7 @@ export class Tray extends THREE.Group {
       ctx.fillText(String(v), W / 2, H * 0.71);
       ctx.font = `600 ${H * 0.085}px ${FONT}`;
       ctx.fillStyle = PY.blush;
-      ctx.fillText('AGUA', W / 2, H * 0.88);
+      ctx.fillText(tr('AGUA'), W / 2, H * 0.88);
     });
   }
 
@@ -262,7 +284,7 @@ export class Tray extends THREE.Group {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `600 ${H * 0.17}px ${FONT}`;
-      ctx.fillText(ready ? 'Empujar' : `${Math.ceil((1 - frac) * HAND.push.cooldown)} s`, cx, H * 0.86);
+      ctx.fillText(ready ? tr('Empujar') : `${Math.ceil((1 - frac) * HAND.push.cooldown)} s`, cx, H * 0.86);
     });
   }
 
@@ -282,10 +304,10 @@ export class Tray extends THREE.Group {
       const lx = H * 0.45;
       fitFont(ctx, label, W * 0.36, H * 0.34, 600);
       ctx.fillText(label, lx, H * 0.36);
-      // vida del Mangle madre
+      // vida del corazón de la isla
       ctx.font = `600 ${H * 0.22}px ${FONT}`;
       ctx.fillStyle = heart > 0.5 ? PY.greenDark : heart > 0.25 ? '#b7791f' : PY.danger;
-      ctx.fillText(`Mangle madre ${Math.ceil(heart * 100)}%`, lx, H * 0.7);
+      ctx.fillText(tr('Isla {n}%', { n: Math.ceil(heart * 100) }), lx, H * 0.7);
       const x0 = W * 0.42;
       const bw = W * 0.54;
       const bh = H * 0.3;

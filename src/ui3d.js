@@ -3,6 +3,7 @@
 // paneles salvia, botones píldora verde selva y tipografía Poppins.
 import * as THREE from 'three';
 import { sfx } from './audio.js';
+import { tr, onLang } from './i18n.js';
 
 export const FONT = "'Poppins', system-ui, 'Segoe UI', Roboto, sans-serif";
 
@@ -271,6 +272,10 @@ export function isShown(obj) {
 
 // Todo lo que se puede pulsar (botones y cartas de la selección). Interaction los recorre.
 export const BUTTONS = new Set();
+// al cambiar de idioma, los botones con texto fijo se vuelven a escribir
+onLang(() => {
+  for (const b of BUTTONS) if (b.i18n) b.setLabel?.(tr(b.i18n));
+});
 
 /** Base de todo lo pulsable: `face` es el plano que recibe el rayo; w/h la caja de toque. */
 export class Pressable extends THREE.Group {
@@ -310,7 +315,8 @@ export class Pressable extends THREE.Group {
 export class Button3D extends Pressable {
   constructor({ label = '', w = 0.12, h = 0.042, variant = 'primary', icon = null, onPress = null, fontScale = 0.4 }) {
     super(w, h);
-    this.label = label;
+    this.i18n = label; // texto original (español): se vuelve a traducir si cambia el idioma
+    this.label = tr(label);
     this.variant = variant;
     this.icon = icon;
     this.fontScale = fontScale;

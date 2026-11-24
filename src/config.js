@@ -25,7 +25,7 @@ export const ISLAND = {
   sandA: 0.39,
   sandB: 0.208,
   heartR: 0.075, // radio del Mangle madre
-  heartHp: 3000,
+  heartHp: 3000, // vida del corazón de la isla
 };
 
 // Coordenadas locales del tablero: x → derecha, z → hacia el usuario, y → arriba.
@@ -56,7 +56,9 @@ export const LAYOUT = {
 // side 'left': atril bajo junto al borde izquierdo del tablero, cerca del usuario (no hay que estirarse).
 // height: altura del centro sobre la mesa · gap: separación del tablero · fromFront: qué tan atrás del borde
 // cercano queda su centro · tilt: inclinación hacia atrás · yaw: giro hacia el centro del tablero.
-export const TRAY = { side: 'left', height: 0.13, gap: 0.035, fromFront: 0.24, tilt: -1.15, yaw: 0.45, perRow: 6 };
+// side 'column' (wireframe): una sola línea vertical, de pie junto a la esquina izquierda cercana al usuario,
+// arriba pausa y empujar, luego el agua, los 5 elegidos y la pala. scale: tamaño de la bandeja.
+export const TRAY = { side: 'column', height: 0.13, gap: 0.05, fromFront: 0.1, tilt: -0.32, yaw: 0.55, scale: 0.8, perRow: 6 };
 
 // Unidad de daño: una semilla de guacamaya o una gota de veneno de rana.
 const SHOT = 25;
@@ -236,7 +238,7 @@ export const ABILITIES = {
 // ── Invasores ── velocidad en casillas por segundo
 // La vida sube de forma exponencial: cada persona aguanta el doble que la anterior, la primera máquina
 // el triple que la última persona y cada máquina el doble que la anterior. Cada nivel la multiplica (levels.js).
-const HP0 = 100;
+const HP0 = 150; // vida base (se subió: las peleas eran muy cortas)
 const TIER = [1, 2, 4, 12, 24, 48, 96];
 // kind: person | machine · rad: radio (casillas) · reach: alcance de su ataque · dps: daño a defensores
 export const ENEMIES = {

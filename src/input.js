@@ -6,6 +6,10 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 
 const PINCH_ON = 0.022; // m entre pulgar e índice para empezar a pellizcar
 const PINCH_OFF = 0.04; // m para soltar (histéresis)
+// "Tirito": pellizcar índice y pulgar y soltar el índice de golpe, como quien lanza algo con el dedo
+const FLICK_OPEN = 0.055; // m de apertura que cuenta como soltar el índice
+const FLICK_HOLD = 0.08; // s mínimos de pellizco antes de soltar
+const FLICK_FAST = 0.16; // s máximos entre dejar de pellizcar y abrir del todo
 
 export class InputManager {
   constructor(renderer, scene, camera, dom) {
@@ -112,9 +116,11 @@ export class InputManager {
   /** Actualiza y devuelve las fuentes activas. */
   update(inXR) {
     const out = [];
+    const now = performance.now() / 1000;
     for (const s of this.xr) {
       let pressed = false;
       s.active = false;
+      s.flick = false;
       if (inXR && s.kind === 'hand') {
         const it = s.hand.joints['index-finger-tip'];
         const th = s.hand.joints['thumb-tip'];
@@ -123,6 +129,21 @@ export class InputManager {
           s.tip.copy(it.position);
           const d = it.position.distanceTo(th.position);
           pressed = s.pressed ? d < PINCH_OFF : d < PINCH_ON;
+          // detector del tirito
+          if (d < PINCH_ON) {
+            if (!s.pinchSince) s.pinchSince = now;
+            s.lastPinch = now;
+          } else if (s.pinchSince) {
+            if (d > FLICK_OPEN) {
+              if (s.lastPinch - s.pinchSince > FLICK_HOLD && now - s.lastPinch < FLICK_FAST) {
+                const mid = s.hand.joints['index-finger-phalanx-intermediate'];
+                s.flick = true;
+                s.flickFrom = (s.flickFrom || new THREE.Vector3()).copy(it.position);
+                s.flickDir = (s.flickDir || new THREE.Vector3()).copy(it.position).sub(mid && mid.visible ? mid.position : th.position).normalize();
+              }
+              s.pinchSince = 0;
+            } else if (now - s.lastPinch > FLICK_FAST) s.pinchSince = 0;
+          }
           s.point.copy(it.position).add(th.position).multiplyScalar(0.5);
           s.dotIndex.position.copy(it.position);
           s.dotThumb.position.copy(th.position);

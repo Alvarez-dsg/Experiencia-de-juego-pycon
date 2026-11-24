@@ -16,6 +16,7 @@ const _n = new THREE.Vector3();
 const _v = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _plane = new THREE.Plane();
+const _ray = new THREE.Ray();
 
 export class Interaction {
   constructor({ scene, game, board, tray }) {
@@ -171,6 +172,8 @@ export class Interaction {
         else if (target.kind === 'card') this.startDrag(src, target.card);
         else if (target.kind === 'enemy') this.game.pushAt(target.enemy.x, target.enemy.z);
       }
+      // tirito (pellizcar y soltar el índice): empuja a los invasores hacia donde apunta el dedo
+      if (src.flick && !drag) this.flick(src);
       const d = this.drags.get(src.id);
       if (d) {
         // al soltar se usa la última casilla válida: al abrir los dedos el punto del pellizco se desplaza
@@ -204,6 +207,27 @@ export class Interaction {
         b.press();
       } else if (!inside && _l.z > 0.02) b._poked.delete(src.id);
     }
+  }
+
+  /** Tirito con el índice: el empujón cae donde apunta el dedo (o justo debajo de la mano). */
+  flick(src) {
+    const game = this.game;
+    if (game.state !== 'playing') return;
+    const now = performance.now();
+    if ((this.pushLock.get(src.id) || 0) > now) return;
+    _ray.origin.copy(src.flickFrom);
+    _ray.direction.copy(src.flickDir);
+    let hit = this.boardPointFromRay(_ray, _w);
+    if (!hit || hit.distanceTo(src.flickFrom) > 0.9) {
+      // apunta al aire: cae bajo la mano
+      _ray.direction.set(0, -1, 0);
+      hit = this.boardPointFromRay(_ray, _w);
+    }
+    if (!hit) return;
+    this.board.content.worldToLocal(_l.copy(hit));
+    if (_l.x < LAYOUT.left || _l.x > LAYOUT.right || _l.z < LAYOUT.back || _l.z > LAYOUT.front) return;
+    game.pushAt(_l.x, _l.z);
+    this.pushLock.set(src.id, now + 450);
   }
 
   /** Manotazo: la mano abierta barre el tablero, bajita y rápido (en cualquier dirección). */
@@ -307,10 +331,10 @@ export class Interaction {
     if (cell) {
       const occupant = this.game.grid[cell.r][cell.c];
       // solo se planta en la tierra verde de la isla (nunca en la arena ni en el Mangle madre)
-      ok = d.type === 'shovel' ? !!occupant : cell.land && !occupant && !this.game.whyCantPlant(d.type);
+      ok = d.type === 'shovel' ? !!occupant : cell.land && this.game.rowOpen(cell.r) && !occupant && !this.game.whyCantPlant(d.type);
     }
     d.cell = ok ? cell : null;
-    d.hl.visible = !!cell && (cell.land || d.type !== 'shovel');
+    d.hl.visible = !!cell && ((cell.land && this.game.rowOpen(cell.r)) || d.type !== 'shovel');
     if (cell) {
       d.hl.position.x = colX(cell.c);
       d.hl.position.z = rowZ(cell.r);

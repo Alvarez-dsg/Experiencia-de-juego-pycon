@@ -3,9 +3,10 @@
 import * as THREE from 'three';
 import { PLANT_ORDER, TEAM } from './config.js';
 import { MATS } from './models.js';
-import { CanvasPlane, Pressable, Button3D, PY, FONT, drawCard, drawEyebrow, drawPyBrand, roundRect, popIn } from './ui3d.js';
+import { CanvasPlane, Pressable, Button3D, PY, FONT, drawCard, drawEyebrow, drawPyBrand, roundRect, popIn, fitFont } from './ui3d.js';
 import { drawSeedCard, cardModel, fitModel, AbilityCard } from './cards.js';
 import { sfx } from './audio.js';
+import { tr } from './i18n.js';
 
 const TILT = -0.25; // inclinación del panel (la misma que los demás paneles)
 
@@ -72,8 +73,10 @@ class PickCard extends Pressable {
 export class TeamSelect extends THREE.Group {
   constructor({ onPlay, onRelocate }) {
     super();
-    const W = 0.84;
-    const H = 0.5;
+    // Composición del wireframe: tablero grande con TODOS los personajes (4 columnas) y debajo
+    // una franja delgada con los 5 elegidos; a la derecha la carta mínima del personaje y "¡A defender!".
+    const W = 0.62;
+    const H = 0.56;
     this.W = W;
     this.H = H;
     this.bg = new CanvasPlane(W, H, 2000);
@@ -83,41 +86,48 @@ export class TeamSelect extends THREE.Group {
     this.level = { number: 1, total: 5, name: '' };
     this.denyT = 0;
 
-    // todas las cartas: 2 filas de 6
     const cw = 0.068;
     const ch = 0.095;
-    const step = 0.078;
-    const x0 = -W / 2 + 0.045 + cw / 2;
+    const stepX = 0.078;
+    const stepY = 0.104;
+    const COLS = 4;
+    // tablero de todos los personajes
+    this.grid = { x: -W / 2 + 0.03, y: H / 2 - 0.085, w: 0.33, h: 0.012 * 2 + stepY * 2 + ch };
+    const gx0 = this.grid.x + 0.014 + cw / 2;
+    const gy0 = this.grid.y - 0.012 - ch / 2;
     this.cards = PLANT_ORDER.map((type, i) => {
       const c = new PickCard(type, cw, ch);
-      c.baseX = x0 + (i % 6) * step;
-      c.position.set(c.baseX, i < 6 ? 0.098 : -0.008, 0.004);
+      c.baseX = gx0 + (i % COLS) * stepX;
+      c.position.set(c.baseX, gy0 - Math.floor(i / COLS) * stepY, 0.004);
       c.onPress = () => this.toggle(type, c);
       this.add(c);
       return c;
     });
-    // ranuras del equipo
+    // franja delgada de los elegidos
+    this.strip = { x: this.grid.x, y: this.grid.y - this.grid.h - 0.016, w: this.grid.w, h: 0.088 };
+    const sx = this.strip.x + this.strip.w / 2;
     this.slots = Array.from({ length: TEAM.size }, (_, i) => {
       const s = new PickCard(null, 0.05, 0.07, i);
-      s.baseX = x0 - cw / 2 + 0.025 + i * 0.06;
-      s.position.set(s.baseX, -0.128, 0.004);
+      s.baseX = sx + (i - (TEAM.size - 1) / 2) * 0.062;
+      s.position.set(s.baseX, this.strip.y - this.strip.h / 2 - 0.003, 0.004);
       s.onPress = () => s.type && this.toggle(s.type, s);
       this.add(s);
       return s;
     });
-    // carta grande de habilidad
+    // carta mínima del personaje (a la derecha)
+    const rx = (this.grid.x + this.grid.w + W / 2) / 2;
     this.ability = new AbilityCard(0.2, 0.29, TILT);
-    this.ability.position.set(W / 2 - 0.04 - 0.1, -0.012, 0.004);
+    this.ability.position.set(rx, this.grid.y - 0.145, 0.004);
     this.add(this.ability);
 
-    this.playBtn = new Button3D({ label: '¡A defender!', w: 0.2, h: 0.046, onPress: () => this.team.length === TEAM.size && onPlay([...this.team]) });
-    this.playBtn.position.set(this.ability.position.x, -this.H / 2 + 0.036, 0.004);
+    this.playBtn = new Button3D({ label: '¡A defender!', w: 0.2, h: 0.05, onPress: () => this.team.length === TEAM.size && onPlay([...this.team]) });
+    this.playBtn.position.set(rx, this.strip.y - 0.03, 0.004);
     this.add(this.playBtn);
-    this.clearBtn = new Button3D({ label: 'Vaciar', w: 0.09, h: 0.04, variant: 'outline', onPress: () => this.clear() });
-    this.clearBtn.position.set(x0 - cw / 2 + 0.045, -this.H / 2 + 0.036, 0.004);
+    this.clearBtn = new Button3D({ label: 'Vaciar', w: 0.09, h: 0.038, variant: 'outline', onPress: () => this.clear() });
+    this.clearBtn.position.set(rx - 0.055, this.strip.y - 0.078, 0.004);
     this.add(this.clearBtn);
-    this.relocBtn = new Button3D({ label: 'Recolocar', w: 0.11, h: 0.04, variant: 'outline', onPress: () => onRelocate() });
-    this.relocBtn.position.set(this.clearBtn.position.x + 0.11, -this.H / 2 + 0.036, 0.004);
+    this.relocBtn = new Button3D({ label: 'Recolocar', w: 0.1, h: 0.038, variant: 'outline', onPress: () => onRelocate() });
+    this.relocBtn.position.set(rx + 0.05, this.strip.y - 0.078, 0.004);
     this.add(this.relocBtn);
     this.buttons = [this.playBtn, this.clearBtn, this.relocBtn];
 
@@ -128,6 +138,7 @@ export class TeamSelect extends THREE.Group {
 
   setXR(isXR) {
     this.relocBtn.visible = isXR;
+    this.clearBtn.position.x = this.ability.position.x - (isXR ? 0.055 : 0);
   }
 
   open(level, team) {
@@ -163,6 +174,15 @@ export class TeamSelect extends THREE.Group {
     this.refresh();
   }
 
+  /** Vuelve a escribir las cartas en el idioma elegido. */
+  relang() {
+    for (const c of [...this.cards, ...this.slots]) c.redraw(true);
+    const t = this.ability.type;
+    this.ability.type = null;
+    if (t) this.ability.show(t);
+    if (this.visible) this.refresh();
+  }
+
   clear() {
     this.team = [];
     this.refresh();
@@ -176,56 +196,54 @@ export class TeamSelect extends THREE.Group {
     const n = this.team.length;
     const full = n === TEAM.size;
     this.playBtn.setEnabled(full);
-    this.playBtn.setLabel(full ? '¡A defender!' : `Elige ${TEAM.size - n} más`);
+    this.playBtn.setLabel(full ? tr('¡A defender!') : tr('Elige {n} más', { n: TEAM.size - n }));
     this.drawBg();
   }
 
   drawBg() {
-    const { W: wm, H: hm } = this;
+    const { W: wm, H: hm, grid, strip } = this;
     const n = this.team.length;
     const deny = this.denyT > 0;
     this.bg.draw((ctx, W, H) => {
       const toX = (x) => ((x + wm / 2) / wm) * W;
       const toY = (y) => ((hm / 2 - y) / hm) * H;
-      const pad = W * 0.008;
-      drawCard(ctx, pad, pad, W - pad * 2, H - pad * 2, H * 0.06, { lw: H * 0.006 });
-      const mx = toX(-wm / 2 + 0.045);
-      drawEyebrow(ctx, `Nivel ${this.level.number} de ${this.level.total} · ${this.level.name}`, mx, H * 0.06, H * 0.026);
+      const k = W / wm; // px por metro
+      const pad = W * 0.01;
+      drawCard(ctx, pad, pad, W - pad * 2, H - pad * 2, H * 0.05, { lw: H * 0.006 });
+      const mx = toX(grid.x);
+      drawEyebrow(ctx, tr(`Nivel ${this.level.number} de ${this.level.total} · ${this.level.name}`), mx, H * 0.05, H * 0.024, { maxW: W * 0.62 });
       ctx.fillStyle = PY.ink;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
-      ctx.font = `600 ${H * 0.062}px ${FONT}`;
-      ctx.fillText(`Elige a tus ${TEAM.size} defensores`, mx, H * 0.14);
-      ctx.fillStyle = PY.muted;
-      ctx.font = `500 ${H * 0.028}px ${FONT}`;
-      ctx.fillText('Acerca la mano a una carta para ver su habilidad. Pellízcala o tócala para sumarla a tu equipo.', mx, H * 0.185);
-      drawPyBrand(ctx, W - toX(-wm / 2 + 0.045) - H * 0.25, H * 0.07, H * 0.045);
-      // equipo
-      const ey = toY(-0.076);
-      drawEyebrow(ctx, 'Tu equipo', mx, ey, H * 0.024);
-      ctx.save();
-      ctx.font = `700 ${H * 0.03}px ${FONT}`;
+      fitFont(ctx, tr('Elige a tus {n} defensores', { n: TEAM.size }), W * 0.6, H * 0.05, 600);
+      ctx.fillText(tr('Elige a tus {n} defensores', { n: TEAM.size }), mx, H * 0.12);
+      drawPyBrand(ctx, W - W * 0.05 - H * 0.2, H * 0.06, H * 0.04);
+      // tablero grande con todos los personajes
+      roundRect(ctx, toX(grid.x), toY(grid.y), grid.w * k, grid.h * k, H * 0.03);
+      ctx.fillStyle = 'rgba(238, 242, 225, 0.8)';
+      ctx.fill();
+      ctx.lineWidth = H * 0.004;
+      ctx.strokeStyle = PY.teal;
+      ctx.stroke();
+      // franja delgada de los elegidos
+      roundRect(ctx, toX(strip.x), toY(strip.y), strip.w * k, strip.h * k, H * 0.03);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = H * 0.005;
+      ctx.strokeStyle = deny ? PY.danger : n === TEAM.size ? PY.green : PY.orange;
+      ctx.stroke();
+      // contador como "leyenda" sobre el borde de la franja
+      ctx.font = `700 ${H * 0.024}px ${FONT}`;
       ctx.textBaseline = 'middle';
-      ctx.textAlign = 'left';
-      const label = `${n} de ${TEAM.size}`;
-      const lx = mx + H * 0.27;
+      const label = `${tr('Tu equipo')} · ${tr('{a} de {b}', { a: n, b: TEAM.size })}${deny ? ' · ' + tr('Equipo completo') : ''}`;
       const lw = ctx.measureText(label).width + H * 0.04;
-      ctx.beginPath();
-      roundRect(ctx, lx, ey - H * 0.022, lw, H * 0.044, H * 0.022);
+      const lx = toX(strip.x) + H * 0.025;
+      const ly = toY(strip.y);
+      roundRect(ctx, lx, ly - H * 0.018, lw, H * 0.036, H * 0.018);
       ctx.fillStyle = deny ? PY.danger : n === TEAM.size ? PY.green : PY.orange;
       ctx.fill();
       ctx.fillStyle = n === TEAM.size || deny ? '#ffffff' : PY.ink;
-      ctx.fillText(label, lx + H * 0.02, ey + H * 0.002);
-      if (deny) {
-        ctx.fillStyle = PY.danger;
-        ctx.font = `600 ${H * 0.026}px ${FONT}`;
-        ctx.fillText('Equipo completo: quita uno para cambiarlo', lx + lw + H * 0.02, ey);
-      } else {
-        ctx.fillStyle = PY.muted;
-        ctx.font = `500 ${H * 0.026}px ${FONT}`;
-        ctx.fillText('La pala siempre va en la bandeja', lx + lw + H * 0.02, ey);
-      }
-      ctx.restore();
+      ctx.fillText(label, lx + H * 0.02, ly + H * 0.001);
     });
   }
 

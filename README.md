@@ -2,18 +2,19 @@
 
 Experiencia de **realidad aumentada para Meta Quest** que corre en el navegador (WebXR) y extiende la página
 interactiva de **PyCon Colombia 2028**. Las gafas detectan una mesa, sobre ella **brota un tablero tipo diorama** y
-el usuario elige un equipo de 5 plantas y animales amazónicos para proteger el **Mangle madre**, en el centro de una
-isla, de los leñadores y máquinas de la empresa ficticia **DEFORESTA S.A.**, que cruzan el río desde todos lados.
-Cada nivel ganado muestra una tarjeta de PyCon Colombia 2028 (ponentes, sede y evento).
+el usuario elige un equipo de 5 plantas y animales amazónicos para proteger el **corazón de la isla** (una pradera
+tupida en su centro) de los leñadores y máquinas de la empresa ficticia **DEFORESTA S.A.**, que cruzan el río desde todos lados.
+Cada nivel ganado muestra una tarjeta de PyCon Colombia 2028 (ponentes, sede y evento). Todo está en **español e
+inglés** (se elige en la pantalla de inicio).
 
 ```
- [ Nivel · vida del Mangle madre · avance ]
- bandeja: atril a la izquierda del tablero (agua, 5 cartas, pala, pausa, empujar)
+ [ Nivel · vida de la isla · avance ]
+ bandeja: una sola línea vertical de pie en la esquina izquierda (pausa/empujar, agua, 5 cartas, pala)
 
    orilla talada · tocones · DEFORESTA S.A.   ← de aquí salen los invasores (toda la orilla)
    ~~~~~~~~ río: orilla bajita · centro hondo ~~~~~~~~   ← la corriente trae gotas de agua
         arena (no se planta)
-          tierra verde (casillas)  ★ Mangle madre ★  tierra verde
+          tierra verde (2 filas en el nivel 1, +1 por nivel)  ★ pradera ★  tierra verde
         arena
    ~~~~~~~~ río ~~~~~~~~
    orilla de selva (la del usuario)
@@ -21,12 +22,30 @@ Cada nivel ganado muestra una tarjeta de PyCon Colombia 2028 (ponentes, sede y e
 
 ## Qué incluye
 
+- **Animales modelados en Blender** (`blender/animales.py`, `blender/animales.blend`, vista previa en
+  `blender/render.png`): rana dardo, chigüiro, anaconda, mono, tortuga (y su caparazón), guacamaya y mariposa morfo
+  sobre su matica, con los colores y la forma del documento de personajes. Acabado de **arcilla/fieltro**: formas
+  fusionadas con remesh de vóxeles, suavizadas, reducidas a ~2000 triángulos para la Quest, con colores por vértice,
+  oclusión ambiental horneada y una textura de fieltro suave. Se exportan a `public/models/animales.glb`.
+  Para regenerarlos: `blender -b --python blender/animales.py -- public/models/animales.glb blender/animales.blend blender/render.png`.
+- **Vegetación y río de la landing de PyCon 2028**: `blender/vegetacion.py` extrae pasto, helechos, heliconias,
+  bromelias, musgo, victorias amazónicas, camalotes, raíces de mangle, palmas y cecropias del recorrido 3D de la página
+  (`recorrido-amazonas.glb`) a `public/models/vegetacion.glb`. El río usa el mapa de normales del agua de la página
+  (`public/tex/agua_n.jpg`).
+- **Pantallas según los wireframes**: inicio con el chigüiro constructor (casco y llave), **Ver tutorial / Jugar** y
+  **Español / English**; selección con un **tablero grande de todos los personajes** y una **franja delgada con los
+  5 elegidos**; **cartas mínimas** (arte grande, nombre y lo que hace en dos o tres palabras); bandeja de juego en
+  **una sola línea**; y tarjetas entre niveles con **Salir / Siguiente nivel** que siguen mostrando PyCon 2028.
+- **Filas que se abren por nivel**: 2 filas para plantar en el nivel 1 (y el tutorial), 3 en el nivel 2 y las 4
+  desde el nivel 3 (`rows` en `levels.js`). Los invasores tienen más vida (`HP0` = 150 y `hpMul` de 1,15 a 1,4).
+- **Dos gestos para empujar**: barrer con la mano abierta o **pellizcar índice y pulgar y soltar el índice** como
+  un tirito (el empujón cae donde apunta el dedo).
 - **Estética de PyCon Colombia 2028** en toda la experiencia: colores crema/naranja/verde de la página, tipografía
   Poppins, “cejas” en mayúsculas, botones de píldora, logo de Python y el degradado de atardecer.
 - **Pantalla de selección de equipo**: las 11 cartas del juego; el usuario elige exactamente **5**. Al acercar la
   mano (o el mouse) a una carta, la **carta de habilidad** grande muestra el modelo 3D, el tipo, la habilidad y las
   estadísticas (costo, vida y su dato clave). La pala siempre va en la bandeja.
-- **Tablero radial**: los invasores salen de cualquier punto de la orilla talada y caminan hacia el Mangle madre.
+- **Tablero radial**: los invasores salen de cualquier punto de la orilla talada y caminan hacia el centro de la isla.
   Cruzan el río: en la orilla el agua es bajita y en el centro es **honda** (franja oscura); mientras van por lo hondo,
   **los ataques a distancia no los alcanzan** (rana, guacamaya y mono). La tortuga nada, la anaconda los atrapa
   donde sea y el jabillo explota también en el agua.
@@ -41,8 +60,8 @@ Cada nivel ganado muestra una tarjeta de PyCon Colombia 2028 (ponentes, sede y e
 - **Detección de mesas** con *WebXR Plane Detection* (prefiere superficies marcadas como mesa) y respaldo con
   hit-test y el botón **“Colocar frente a mí”**.
 - **Modo navegador** (mouse) para probar y presentar en el PC.
-- Todo es **procedural** (modelos hechos con código, sonidos sintetizados). Las únicas imágenes son la portada y las
-  fotos de los ponentes en `public/pycon/`, tomadas del proyecto de la página.
+- Sonidos sintetizados. Invasores, empresa y paneles se hacen con código; los animales vienen de Blender y la
+  vegetación de la landing (si los GLB no cargan, el juego usa los modelos hechos con código de respaldo).
 
 ### Defensores
 
@@ -193,22 +212,25 @@ Sube la carpeta `dist/` a Netlify Drop, GitHub Pages o Vercel (todas dan HTTPS).
 | `src/planes.js` | Detección de mesas (Plane Detection), hit-test y cálculo de posición/giro/escala |
 | `src/input.js` | Manos (pellizco con histéresis), controles y mouse unificados |
 | `src/interaction.js` | Arrastrar cartas, lanzar el jabillo, manotazo, tocar gotas y botones |
-| `src/game.js` | Lógica: defensores, invasores radiales, proyectiles, granadas, empujón, agua, Mangle madre, victoria/derrota |
-| `src/board.js`, `src/scenery.js` | Diorama: terreno, río animado, isla, decoración, empresa, Mangle madre, efecto de brote |
+| `src/game.js` | Lógica: defensores, invasores radiales, proyectiles, granadas, empujón, agua, filas abiertas, vida de la isla, victoria/derrota |
+| `src/board.js`, `src/scenery.js` | Diorama: terreno, río con la textura de la landing, isla con pasto, vegetación, empresa, pradera central, efecto de brote |
+| `src/assets.js` | Carga `animales.glb` y `vegetacion.glb` |
+| `src/i18n.js` | Español / inglés (`tr()` traduce los textos escritos en español) |
+| `src/screens.js` | Pantalla de inicio del wireframe y dibujo del chigüiro constructor |
 | `src/models.js`, `src/animals.js`, `src/invaders.js` | Modelos procedurales en estilo caricatura (material por bandas + contorno) |
 | `src/defenders.js` | Arma cada defensor (partes animadas) |
 | `src/cards.js` | Cartas de semilla y carta de habilidad (composición tipo carta coleccionable) |
 | `src/select.js` | Pantalla de selección del equipo de 5 |
 | `src/pycon.js` | Tarjetas de PyCon Colombia 2028 entre niveles |
-| `src/tray.js` | Bandeja: agua, cartas del equipo, pala, pausa, manotazo, vida del Mangle madre y avance |
+| `src/tray.js` | Bandeja en una sola línea: pausa, empujar, agua, cartas del equipo, pala, vida de la isla y avance |
 | `src/hud.js`, `src/ui3d.js` | Paneles, botones, anuncios y elementos de marca de PyCon en el mundo 3D |
 | `src/particles.js`, `src/audio.js` | Partículas y efectos de sonido sintetizados |
 
 ### Ajustes rápidos
 
-- La bandeja es un atril a la izquierda del tablero, cerca del usuario. Se mueve con `TRAY` en `config.js` (`fromFront`, `gap`, `height`, `tilt`, `yaw`); `side: 'back'` la pone detrás del tablero.
+- La bandeja es una línea vertical de pie en la esquina izquierda cercana. Se ajusta con `TRAY` en `config.js` (`fromFront`, `gap`, `tilt`, `yaw`, `scale`); `side: 'left'` vuelve al atril de dos columnas y `'front'` la pone en una fila delante del tablero.
 - ¿Muy difícil o muy fácil? Ajusta `hpMul`/`speedMul` y las oleadas en `levels.js`, los costos en `PLANTS`,
-  `HP0` y `TIER` (vida de cada invasor), `ISLAND.heartHp` (vida del Mangle madre) y `ECONOMY` (gotas del río).
+  `HP0` y `TIER` (vida de cada invasor), `ISLAND.heartHp` (vida de la isla), `rows` (filas abiertas) y `ECONOMY` (gotas del río).
 - ¿Equipos de otro tamaño? Cambia `TEAM.size` y `TEAM.default` en `config.js`.
 - ¿El manotazo cuesta mucho o se dispara solo? Ajusta `HAND.push.speed` (velocidad mínima) y `HAND.push.height`.
 - ¿Casillas pequeñas para tus dedos? Sube `BOARD.cell` (el tablero se escala solo para caber en la mesa).
@@ -220,4 +242,5 @@ Sube la carpeta `dist/` a Netlify Drop, GitHub Pages o Vercel (todas dan HTTPS).
   semitransparentes y puntos en las yemas.
 - La detección de mesas depende de la configuración del espacio de la Quest.
 - Probado en el navegador de escritorio (tutorial, selección, niveles, tarjetas PyCon, granada y empujón con el
-  mouse; el balance se revisó simulando los 5 niveles). El lanzamiento con la mano y el manotazo solo se pueden validar en unas Quest reales o con el emulador.
+  mouse; el balance se revisó simulando los 5 niveles: del 1 al 4 se ganan; el 5 es una pelea final larga). El
+  lanzamiento con la mano, el manotazo y el tirito con el índice solo se pueden validar en unas Quest reales.

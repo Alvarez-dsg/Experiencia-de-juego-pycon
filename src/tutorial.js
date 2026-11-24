@@ -4,8 +4,8 @@
 const STEPS = [
   {
     id: 'hola',
-    text: 'Tutorial · Salva el Mangle madre',
-    sub: 'Los invasores cruzan el río para talar el árbol del centro de la isla',
+    text: 'Tutorial · Salva la isla',
+    sub: 'Los invasores cruzan el río para arrasar el centro de la isla',
     time: 5,
   },
   {
@@ -52,8 +52,8 @@ const STEPS = [
   },
   {
     id: 'manotazo',
-    text: 'Empújalos con la mano abierta',
-    sub: 'Barre rápido sobre ellos y retroceden (con mouse: clic sobre un invasor)',
+    text: 'Empújalos con la mano',
+    sub: 'Barre con la mano abierta, o pellizca y suelta el índice como un tirito (con mouse: clic)',
     spawn: [
       ['independiente', -0.3, 0],
       ['independiente', -0.26, 0.6],
@@ -78,7 +78,7 @@ const STEPS = [
   },
   {
     id: 'final',
-    text: '¡Protege el Mangle madre!',
+    text: '¡Protege el corazón de la isla!',
     sub: 'Junta agua y planta más defensores: la ceiba aguanta, el mono salta',
     spawn: [
       ['independiente', -0.38, 2],
