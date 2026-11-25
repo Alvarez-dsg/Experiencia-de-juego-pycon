@@ -4,8 +4,23 @@
     {
       "name": "amazonas-http",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:http"],
+      "runtimeArgs": [
+        "run",
+        "dev:http"
+      ],
       "port": 5174
+    },
+    {
+      "name": "amazonas-dist",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4180",
+        "--directory",
+        "dist"
+      ],
+      "port": 4180
     }
   ]
 }

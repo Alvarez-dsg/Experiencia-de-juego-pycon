@@ -1,0 +1,63 @@
+<!--
+  Panel de rendimiento (depuracion). Spatial UI de IWSDK (UIKitML + kit Horizon).
+  main.js actualiza los textos fps / draws / tris cada medio segundo y el boton
+  "sombras" las enciende o apaga (interaccion de rayo/toque integrada de IWSDK).
+-->
+<style>
+  .root {
+    flex-direction: column;
+    width: 260px;
+    padding: 16px;
+    gap: 6px;
+  }
+
+  .title {
+    color: #1b4332;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .label {
+    color: #3a3b40;
+    font-size: 17px;
+  }
+
+  .value {
+    color: #1c1d20;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .button {
+    margin-top: 6px;
+    justify-content: flex-start;
+  }
+</style>
+<Panel class="root">
+  <div class="title">RENDIMIENTO</div>
+  <div class="row">
+    <div class="label">FPS</div>
+    <div id="fps" class="value">--</div>
+  </div>
+  <div class="row">
+    <div class="label">Draw calls</div>
+    <div id="draws" class="value">--</div>
+  </div>
+  <div class="row">
+    <div class="label">Triangulos</div>
+    <div id="tris" class="value">--</div>
+  </div>
+  <Button id="sombras" class="button">
+    <ButtonIcon>
+      <Sun></Sun>
+    </ButtonIcon>
+    <ButtonLabel id="sombras-label">Sombras: si</ButtonLabel>
+  </Button>
+</Panel>

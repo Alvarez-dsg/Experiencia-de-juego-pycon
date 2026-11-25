@@ -1,5 +1,7 @@
 // Amazonas vs Leñadores — prototipo WebXR (realidad aumentada) para Meta Quest.
 import * as THREE from 'three';
+import { World, createSystem, XRPlane, EnvironmentRaycastTarget, RaycastSpace, RayInteractable, PokeInteractable } from '@iwsdk/core';
+import projectOptions from 'virtual:iwsdk-project';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Board } from './board.js';
 import { Game } from './game.js';
@@ -11,32 +13,11 @@ import { PlaneTracker } from './planes.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
 import { LEVELS } from './levels.js';
-import { TEAM, PLANT_ORDER, LIGHT } from './config.js';
+import { TEAM, PLANT_ORDER, LIGHT, LAYOUT } from './config.js';
 import { preloadPycon } from './pycon.js';
 import { loadAssets } from './assets.js';
 import { makePortraits } from './portraits.js';
 import { tr, onLang, getLang, setLang } from './i18n.js';
-
-// Modo de prueba en PC (solo con `npm run dev`): emula unas Meta Quest 3 con el runtime oficial de Meta (IWER).
-//   ?emular       → gafas + manos emuladas (sin mesas)
-//   ?emular=sala  → además carga una sala sintética con escritorio (detección de planos)
-const EMULATE = new URLSearchParams(location.search).get('emular');
-if (import.meta.env.DEV && EMULATE !== null) {
-  try {
-    const { XRDevice, metaQuest3 } = await import('iwer');
-    const device = new XRDevice(metaQuest3);
-    device.installRuntime({ forceInstall: true });
-    device.primaryInputMode = 'hand';
-    if (EMULATE === 'sala') {
-      const { SyntheticEnvironmentModule } = await import('@iwer/sem');
-      device.installSEM(SyntheticEnvironmentModule);
-      await device.sem.loadDefaultEnvironment('home_office');
-    }
-    window.__xrDevice = device;
-  } catch (e) {
-    console.warn('No se pudo iniciar el emulador IWER', e);
-  }
-}
 
 // Espera la tipografía de la página (Poppins) para que los textos 3D se dibujen bien
 await Promise.race([
@@ -54,20 +35,18 @@ const app = { mode: 'desktop', placement: 'placed', autoPlace: true, scanT: 0, s
 const head = new THREE.Vector3(0, 1.4, 0.8);
 const headQ = new THREE.Quaternion();
 
-// ───────────────────────── render ─────────────────────────
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+// ───────────────────────── render (IWSDK) ─────────────────────────
+// El mundo de IWSDK crea el renderer, la escena, la cámara (hija del "player" XR), el bucle de render y la sesión de RA
+// según iwsdk.config.json (modo "ar", manos, planos, hit-test). El juego corre como un sistema del ECS (GameSystem, abajo).
+const world = await World.create(document.getElementById('app'), projectOptions);
+const { renderer, scene, camera } = world;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.localClippingEnabled = true;
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.shadowMap.enabled = LIGHT.shadows;
 renderer.shadowMap.type = THREE.PCFShadowMap;
-renderer.xr.enabled = true;
-renderer.xr.setReferenceSpaceType('local-floor');
-document.getElementById('app').appendChild(renderer.domElement);
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 50);
-camera.position.set(-0.3, 1.47, 1.12); // a la izquierda para ver también la bandeja vertical
+// en RA se ven las manos reales (passthrough): sin las manos virtuales de IWSDK, el juego dibuja sus propios cursores
+for (const side of ['left', 'right']) world.input.xr.visualAdapters.hand[side].toggleVisual(false);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(-0.17, 0.87, -0.03);
 controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
@@ -234,7 +213,7 @@ const actions = {
     beginScanning(false);
   },
   exitAR() {
-    renderer.xr.getSession()?.end();
+    world.exitXR();
   },
   placeHere() {
     const f = new THREE.Vector3(0, 0, -1).applyQuaternion(headQ).setY(0);
@@ -350,7 +329,7 @@ function xrFrame(frame, dt) {
     headQ.set(o.x, o.y, o.z, o.w);
   }
   if (app.placement !== 'scanning') return;
-  planes.update(frame, ref, dt);
+  planes.update(frame, ref, dt, sceneSystem);
   app.scanT += dt;
   const best = planes.best(head);
   if (best && app.autoPlace) {
@@ -383,7 +362,6 @@ renderer.xr.addEventListener('sessionstart', () => {
   interaction.cancelAll();
   game.pause();
   planes.reset();
-  planes.initHitTest(renderer.xr.getSession());
   beginScanning(true);
   document.body.classList.add('in-xr');
 });
@@ -408,11 +386,8 @@ async function enterAR() {
   sfx.unlock();
   const status = document.getElementById('xr-status');
   try {
-    const session = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['local-floor'],
-      optionalFeatures: ['hand-tracking', 'plane-detection', 'hit-test', 'anchors'],
-    });
-    await renderer.xr.setSession(session);
+    // IWSDK pide la sesión 'immersive-ar' con las funciones de iwsdk.config.json (local-floor, manos, planos, hit-test, anclas)
+    world.launchXR();
     document.body.classList.add('playing');
   } catch (e) {
     status.textContent = 'No se pudo iniciar la realidad aumentada: ' + (e?.message || e);
@@ -454,18 +429,10 @@ let statusKey = '';
   btnARMini.hidden = !ok;
 })();
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
 // ───────────────────────── bucle principal ─────────────────────────
 placeDesktop();
-const clock = new THREE.Clock();
 let birdT = 4;
-
-renderer.setAnimationLoop((time, frame) => tick(Math.min(clock.getDelta(), 0.05), frame));
 
 function tick(dt, frame = null) {
   const inXR = renderer.xr.isPresenting;
@@ -510,9 +477,94 @@ function tick(dt, frame = null) {
     birdT = 3 + Math.random() * 6;
     if (board.root.visible) sfx.bird();
   }
-
-  renderer.render(scene, camera);
+  perf.update(dt);
 }
+
+// ───────────────────────── sistemas de IWSDK ─────────────────────────
+// Scene Understanding: IWSDK convierte cada plano detectado (XRPlane) en una entidad; PlaneTracker los clasifica
+// para encontrar la mesa. Environment Raycast: una entidad con EnvironmentRaycastTarget sigue el hit-test desde la
+// cabeza (anillo amarillo de respaldo cuando las gafas no comparten planos).
+const probe = new THREE.Object3D();
+scene.add(probe);
+const probeEntity = world.createTransformEntity(probe, { persistent: true });
+probeEntity.addComponent(EnvironmentRaycastTarget, { space: RaycastSpace.Viewer, maxDistance: 4 });
+
+class SceneSystem extends createSystem({ planes: { required: [XRPlane] } }) {
+  /** Planos nativos (XRPlane de WebXR) que IWSDK tiene como entidades en este cuadro. */
+  planeSet() {
+    const set = new Set();
+    for (const e of this.queries.planes.entities) {
+      const p = e.getValue(XRPlane, '_plane');
+      if (p) set.add(p);
+    }
+    return set;
+  }
+  /** Resultado del raycast contra el entorno (o null). */
+  hitResult() {
+    return probeEntity.getValue(EnvironmentRaycastTarget, 'xrHitTestResult') ?? null;
+  }
+  get supported() {
+    return !!this.xrFrame?.detectedPlanes || this.queries.planes.entities.size > 0;
+  }
+}
+world.registerSystem(SceneSystem, { priority: 5 });
+const sceneSystem = world.getSystem(SceneSystem);
+
+// Bucle del juego: corre cada cuadro dentro de world.update(), antes de que IWSDK dibuje la escena.
+class GameSystem extends createSystem({}) {
+  update(delta) {
+    tick(Math.min(delta, 0.05), this.xrFrame ?? null);
+  }
+}
+world.registerSystem(GameSystem, { priority: 10 });
+
+// Spatial UI: panel de rendimiento en UIKitML (public/ui/rendimiento.uikitml), al fondo a la derecha del tablero.
+const perf = {
+  t: 0,
+  frames: 0,
+  panel: null,
+  anchor: new THREE.Object3D(),
+  update(dt) {
+    this.t += dt;
+    this.frames++;
+    if (this.panel) {
+      this.panel.visible = board.root.visible && (app.mode === 'desktop' || app.placement === 'placed');
+      this.anchor.updateWorldMatrix(true, false);
+      this.anchor.matrixWorld.decompose(this.panel.position, this.panel.quaternion, this.panel.scale);
+    }
+    if (this.t < 0.5) return;
+    const info = renderer.info.render;
+    const fps = Math.round(this.frames / this.t);
+    this.t = 0;
+    this.frames = 0;
+    this.last = { fps, calls: info.calls, triangles: info.triangles };
+    if (!this.panel) return;
+    this.fps.setProperties({ text: String(fps) });
+    this.draws.setProperties({ text: String(info.calls) });
+    this.tris.setProperties({ text: info.triangles >= 1000 ? (info.triangles / 1000).toFixed(1) + 'k' : String(info.triangles) });
+  },
+};
+perf.anchor.position.set(LAYOUT.right - 0.02, 0.16, LAYOUT.back + 0.02);
+perf.anchor.rotation.set(-0.15, -0.35, 0);
+perf.anchor.scale.setScalar(0.045);
+board.root.add(perf.anchor);
+world.assets
+  .instantiate('panel-rendimiento')
+  .then((panel) => {
+    const panelEntity = world.createTransformEntity(panel, { persistent: true });
+    panelEntity.addComponent(RayInteractable).addComponent(PokeInteractable);
+    perf.panel = panel;
+    perf.fps = panel.requireElementById('fps');
+    perf.draws = panel.requireElementById('draws');
+    perf.tris = panel.requireElementById('tris');
+    const label = panel.requireElementById('sombras-label');
+    // botón con las interacciones integradas de IWSDK (rayo o toque con la mano/control, clic en el navegador)
+    panel.requireElementById('sombras').addEventListener('click', () => {
+      sun.castShadow = LIGHT.shadows && !sun.castShadow;
+      label.setProperties({ text: sun.castShadow ? 'Sombras: si' : 'Sombras: no' });
+    });
+  })
+  .catch((e) => console.warn('No se pudo cargar el panel de rendimiento', e));
 
 // Acceso para depurar desde la consola. __amz.tick(n) avanza n cuadros de 1/60 s (útil si la pestaña está en segundo plano).
 window.__amz = {
@@ -528,6 +580,9 @@ window.__amz = {
   interaction,
   input,
   fx,
+  world,
+  controls,
+  perf,
   tick: (n = 1, dt = 1 / 60) => {
     for (let i = 0; i < n; i++) tick(dt);
   },

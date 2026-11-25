@@ -1,5 +1,5 @@
 // Detección de superficies elevadas (mesas) con la API WebXR Plane Detection
-// + respaldo con hit-test + cálculo de dónde y cómo colocar el tablero.
+// (vía Scene Understanding de IWSDK) + respaldo con el Environment Raycast de IWSDK + cálculo de dónde y cómo colocar el tablero.
 import * as THREE from 'three';
 import { LAYOUT } from './config.js';
 
@@ -42,7 +42,6 @@ export class PlaneTracker {
     this.reticle.matrixAutoUpdate = false;
     this.reticle.visible = false;
     scene.add(this.reticle);
-    this.hitSource = null;
     this.hit = null;
   }
 
@@ -50,20 +49,8 @@ export class PlaneTracker {
     for (const d of this.map.values()) this.disposePlane(d);
     this.map.clear();
     this.candidates = [];
-    this.hitSource?.cancel?.();
-    this.hitSource = null;
     this.hit = null;
     this.reticle.visible = false;
-  }
-
-  async initHitTest(session) {
-    try {
-      if (!session.requestHitTestSource) return;
-      const viewer = await session.requestReferenceSpace('viewer');
-      this.hitSource = await session.requestHitTestSource({ space: viewer });
-    } catch (e) {
-      this.hitSource = null;
-    }
   }
 
   disposePlane(d) {
@@ -114,9 +101,10 @@ export class PlaneTracker {
     d.priority = label === 'table' || label === 'desk' ? 1 : 0;
   }
 
-  update(frame, refSpace, dt) {
+  /** source: el SceneSystem de IWSDK (planos de Scene Understanding + resultado del Environment Raycast). */
+  update(frame, refSpace, dt, source) {
     this.t += dt;
-    const det = frame.detectedPlanes;
+    const det = source.supported ? source.planeSet() : null;
     this.supported = !!det;
     if (det) {
       for (const [plane, d] of this.map) {
@@ -151,12 +139,12 @@ export class PlaneTracker {
     this.fill.opacity = 0.14 + Math.sin(this.t * 4) * 0.07;
     for (const d of this.map.values()) d.obj.visible = this.show && d.tracked && d.isTable;
 
-    // hit-test (respaldo cuando no hay planos)
+    // hit-test (respaldo cuando no hay planos): el Environment Raycast de IWSDK
     this.hit = null;
-    if (this.hitSource) {
-      const res = frame.getHitTestResults(this.hitSource);
-      if (res.length) {
-        const pose = res[0].getPose(refSpace);
+    const res = source.hitResult();
+    if (res) {
+      {
+        const pose = res.getPose(refSpace);
         if (pose) {
           _m.fromArray(pose.transform.matrix);
           _v.setFromMatrixColumn(_m, 1);

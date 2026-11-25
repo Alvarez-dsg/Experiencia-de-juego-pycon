@@ -116,7 +116,7 @@ Las máquinas aplastan el achiote y resisten el manotazo. Si alguno llega al cen
 
 ## Ejecutar en el PC
 
-Requiere [Node.js](https://nodejs.org) 18 o superior.
+Requiere [Node.js](https://nodejs.org) 20.19 o superior.
 
 ```bash
 npm install
@@ -134,11 +134,10 @@ Clic: arrastrar cartas, tocar las gotas y hacer clic en un invasor para empujarl
 
 ### Emulador de Quest en el PC (opcional)
 
-Con el servidor de desarrollo puedes emular unas Quest 3 con manos usando el runtime oficial de Meta (IWER):
-
-- <http://localhost:5174/?emular> → gafas + manos emuladas (usa “Colocar frente a mí”).
-- <http://localhost:5174/?emular=sala> → además carga una oficina sintética con escritorio: el tablero se coloca
-  solo sobre el escritorio.
+Con `npm run dev` (o `dev:http`) en `localhost`, el plugin de IWSDK inyecta el emulador oficial de Meta (IWER):
+unas Quest 3 dentro de una oficina sintética (`home_office`, en `iwsdk.config.json` → `dev.emulator`). Pulsa
+**“Entrar en RA”**: el tablero se coloca solo sobre el escritorio de la oficina. La barra superior del emulador
+cambia entre controles y manos.
 
 ## Probar en las Meta Quest
 
@@ -203,6 +202,28 @@ Sube la carpeta `dist/` a Netlify Drop, GitHub Pages o Vercel (todas dan HTTPS).
 | Botones | Tócalos con el índice o pellízcalos | Gatillo | Clic |
 | Pausa / recolocar / salir | Botón ❚❚ de la bandeja | ❚❚ | ❚❚ |
 
+## Immersive Web SDK (IWSDK)
+
+El proyecto se creó con el instalador oficial (`npm create @iwsdk@latest`, plantilla AR) y usa **`@iwsdk/core` 1.1.0**
+(Three.js r185 y ECS EliCS). La configuración está en [`iwsdk.config.json`](iwsdk.config.json) con
+`"mode": "ar"`, espacio `local-floor` y las funciones de la sesión (manos, detección de planos, hit-test, anclas).
+`World.create()` crea el renderer, la escena, la cámara, la sesión de RA (`world.launchXR()`) y el bucle; el juego
+corre dentro de ese bucle como un sistema del ECS (`GameSystem` en `src/main.js`).
+
+| Sistema de IWSDK | ¿Se usa? | Dónde y para qué |
+| --- | --- | --- |
+| **Spatial UI (UIKitML)** | Sí | `public/ui/rendimiento.uikitml` (kit Horizon), cargado como asset en `src/iwsdk/assets.js`: panel de rendimiento con FPS, draw calls y triángulos detrás del tablero, más un botón para encender/apagar las sombras. |
+| **Scene Understanding** | Sí | `SceneSystem` (`src/main.js`) consulta las entidades `XRPlane`; `src/planes.js` las clasifica para encontrar la mesa (altura, tamaño, etiqueta) y coloca el tablero. |
+| **Environment Raycast** | Sí | Una entidad con `EnvironmentRaycastTarget` (espacio de la cabeza) da el punto de respaldo (anillo amarillo) cuando las gafas no comparten planos. |
+| **Interacciones integradas** (Ray/Poke) | Sí | El panel UIKitML lleva `RayInteractable` y `PokeInteractable`: su botón se usa con el rayo del control, tocándolo con el dedo o con clic en el navegador (`canvasPointerEvents`). |
+| **Input (XRInputManager)** | Sí | IWSDK gestiona controles y manos; sus manos virtuales se apagan porque en RA se ven las reales y el juego dibuja sus propios cursores. |
+| Physics | No | Los proyectiles, la granada y el empujón son balísticos y sencillos; un motor de física añadiría costo en la Quest sin cambiar el juego. |
+| Grabbing | No | Arrastrar cartas y lanzar el jabillo usa un pellizco propio con histéresis, ajustado al tamaño del tablero. |
+| Locomotion | No | El jugador está de pie frente a su mesa; moverse por la escena no tiene sentido en RA. |
+| Depth Occlusion | No | La oclusión por profundidad cuesta rendimiento en la Quest y el tablero se ve de cerca, encima de la mesa. |
+| Camera Access | No | El juego no necesita leer la imagen de la cámara. |
+| Audio espacial | No | Los efectos son sonidos sintetizados cortos (Web Audio), no ligados a un punto del espacio. |
+
 ## Estructura del código
 
 | Archivo | Qué hace |
@@ -211,8 +232,9 @@ Sube la carpeta `dist/` a Netlify Drop, GitHub Pages o Vercel (todas dan HTTPS).
 | `src/levels.js` | Tutorial y 5 niveles: oleadas radiales, multiplicadores de vida y velocidad, anuncios |
 | `src/tutorial.js` | Pasos del tutorial (cada uno espera a que el jugador lo cumpla) |
 | `src/terrain.js` | Geografía: orillas, río (profundidad), isla (arena / tierra), casillas plantables |
-| `src/main.js` | Arranque, sesión WebXR, colocación del tablero, bucle principal, modo escritorio |
-| `src/planes.js` | Detección de mesas (Plane Detection), hit-test y cálculo de posición/giro/escala |
+| `src/main.js` | Mundo de IWSDK, sistemas (juego, planos/raycast), panel de rendimiento, colocación del tablero, modo escritorio |
+| `iwsdk.config.json`, `src/iwsdk/` | Configuración del proyecto IWSDK (modo `ar`, funciones XR) y catálogo de assets (panel UIKitML) |
+| `src/planes.js` | Detección de mesas (planos de Scene Understanding), respaldo con Environment Raycast y cálculo de posición/giro/escala |
 | `src/input.js` | Manos (pellizco con histéresis), controles y mouse unificados |
 | `src/interaction.js` | Arrastrar cartas, lanzar el jabillo, manotazo, tocar gotas y botones |
 | `src/game.js` | Lógica: defensores, invasores radiales, proyectiles, granadas, empujón, agua, filas abiertas, vida de la isla, victoria/derrota |
