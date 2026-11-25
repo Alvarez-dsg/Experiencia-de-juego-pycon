@@ -263,10 +263,20 @@ export const ECONOMY = {
 };
 
 // ── Interacción directa con la mano ──
+// Iluminación: sombras básicas del sol sobre el tablero (personajes, árboles y empresa proyectan; el terreno
+// recibe). Un solo mapa pequeño compartido por los dos ojos para no cargar a las Quest. La oclusión ambiental de
+// los personajes viene horneada desde Blender (blender/exportar.py) y no cuesta nada en tiempo real.
+export const LIGHT = {
+  shadows: true,
+  mapSize: 1024, // px del mapa de sombras
+  intensity: 0.45, // 0 = sin sombra, 1 = sombra negra (sutil)
+  radius: 2.5, // suavizado del borde
+};
+
 export const HAND = {
   // Manotazo: barre el tablero con la mano abierta, rápido, para alejar a los invasores de la isla
   push: {
-    speed: 0.8, // m/s mínimos de la mano
+    speed: 1.0, // m/s mínimos de la mano (más alto = menos empujones sin querer)
     height: 0.12, // altura máxima de la mano sobre el tablero (m)
     radius: 1.4, // casillas alrededor de la mano
     knock: 1.7, // casillas que retroceden

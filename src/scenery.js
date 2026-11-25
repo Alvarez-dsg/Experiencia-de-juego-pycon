@@ -252,24 +252,25 @@ export function buildVegetation() {
   }
   // ── selva tupida en la orilla del usuario: árboles grandes y frondosos de la landing a lo largo del borde,
   //    más bajos en el centro (para no tapar el río) y más altos hacia las esquinas ──
+  const bt = new GeoBuilder(R); // árboles aparte: proyectan sombra
   const trees = ['arbol_a', 'arbol_b', 'arbol_orilla_a', 'arbol_orilla_b', 'arbol_orilla_c'];
   if (asset('arbol_a')) {
     for (let x = L.left + 0.025, i = 0; x < L.right - 0.015; x += 0.05 + R() * 0.02, i++) {
       const t = Math.min(1, Math.abs(x) / (L.totalW / 2));
-      veg(b, trees[i % trees.length], x, BANK_Y, L.front - 0.012 - R() * 0.01, 0.42 + 0.45 * t * t + R() * 0.08, R() * 6.28);
+      veg(bt, trees[i % trees.length], x, BANK_Y, L.front - 0.012 - R() * 0.01, 0.42 + 0.45 * t * t + R() * 0.08, R() * 6.28);
     }
     // segunda fila en las esquinas, más adentro, y árboles por los costados cercanos
     for (const s of [-1, 1]) {
       for (let j = 0; j < 3; j++) {
         const x = s * (L.totalW / 2 - 0.06 - j * 0.07 - R() * 0.02);
-        veg(b, pick(trees, R), x, BANK_Y, L.front - 0.035 - R() * 0.01, 0.7 + R() * 0.2 - j * 0.1, R() * 6.28);
+        veg(bt, pick(trees, R), x, BANK_Y, L.front - 0.035 - R() * 0.01, 0.7 + R() * 0.2 - j * 0.1, R() * 6.28);
       }
-      veg(b, 'cecropia', s * (L.totalW / 2 - 0.02), BANK_Y, L.front - 0.045, 0.62, R() * 6.28);
-      veg(b, 'helecho_arb', s * (L.totalW / 2 - 0.1), BANK_Y, L.front - 0.03, 0.7, R() * 6.28);
+      veg(bt, 'cecropia', s * (L.totalW / 2 - 0.02), BANK_Y, L.front - 0.045, 0.62, R() * 6.28);
+      veg(bt, 'helecho_arb', s * (L.totalW / 2 - 0.1), BANK_Y, L.front - 0.03, 0.7, R() * 6.28);
     }
     // sotobosque entre los troncos
     for (let x = L.left + 0.02; x < L.right - 0.01; x += 0.035 + R() * 0.015) {
-      veg(b, pick(['helecho_arb', 'heliconia_pl', 'helecho', 'bromelia'], R), x, BANK_Y, L.front - 0.02 - R() * 0.02, 0.45 + R() * 0.25, R() * 6.28);
+      veg(bt, pick(['helecho_arb', 'heliconia_pl', 'helecho', 'bromelia'], R), x, BANK_Y, L.front - 0.02 - R() * 0.02, 0.45 + R() * 0.25, R() * 6.28);
     }
   } else {
     for (const [x, name, k] of [[L.left + 0.05, 'helecho_arb', 0.75], [L.right - 0.05, 'cecropia', 0.62], [L.left + 0.13, 'aguaje', 0.5], [L.right - 0.14, 'helecho_arb', 0.6]]) {
@@ -279,7 +280,9 @@ export function buildVegetation() {
   // lo poco que DEFORESTA S.A. aún no ha talado al fondo
   veg(b, 'aguaje', L.left + 0.04, BANK_Y, L.back + 0.04, 0.55, 1);
   veg(b, 'tronco', L.left + 0.2, BANK_Y, L.back + 0.06, 0.6, 0.3);
-  return b.build();
+  const geo = b.build();
+  geo.userData.trees = bt.parts.length ? bt.build() : null;
+  return geo;
 }
 
 // ───────────────────────── decoración ─────────────────────────

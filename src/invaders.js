@@ -235,6 +235,7 @@ export function createEnemy(type) {
   root.add(inner);
   const mk = (geo, parent) => {
     const m = new THREE.Mesh(geo, MATS.std);
+    m.castShadow = true;
     addOutline(m, machine ? 0.0012 : INK_W);
     parent.add(m);
     return m;

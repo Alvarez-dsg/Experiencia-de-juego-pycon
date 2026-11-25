@@ -113,6 +113,7 @@ const EN = {
   'Siguiente nivel': 'Next level',
   'Jugar de nuevo': 'Play again',
   'Pausa': 'Paused',
+  'Pausar': 'Pause',
   'El juego está en pausa.': 'The game is paused.',
   'Arrasaron el corazón de la isla…': 'They razed the heart of the island…',
   'DEFORESTA S.A. cruzó el río y llegó al centro de la isla. Prueba otro equipo o vuelve a intentarlo.':

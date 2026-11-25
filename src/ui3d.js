@@ -377,7 +377,20 @@ export class Button3D extends Pressable {
       ctx.stroke();
       ctx.fillStyle = text;
       const cy = y + h / 2;
-      if (icon === 'pause') {
+      if (icon === 'pause' && label) {
+        // ícono de pausa + texto, centrados juntos
+        const bw = H * 0.09;
+        const bh = H * 0.34;
+        ctx.font = `700 ${H * this.fontScale}px ${FONT}`;
+        const tw = Math.min(ctx.measureText(label).width, w - h * 0.6 - bw * 4);
+        const x0 = W / 2 - (bw * 3.2 + H * 0.12 + tw) / 2;
+        ctx.fillRect(x0, cy - bh / 2, bw, bh);
+        ctx.fillRect(x0 + bw * 2.2, cy - bh / 2, bw, bh);
+        fitFont(ctx, label, tw, H * this.fontScale, 700);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x0 + bw * 3.2 + H * 0.12, cy + H * 0.01);
+      } else if (icon === 'pause') {
         const bw = H * 0.1;
         const bh = H * 0.36;
         ctx.fillRect(W / 2 - bw * 1.6, cy - bh / 2, bw, bh);

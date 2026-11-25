@@ -2,9 +2,8 @@
 // indicador del manotazo y barra de avance del nivel. Estética de PyCon Colombia 2028.
 import * as THREE from 'three';
 import { PLANTS, LAYOUT, TRAY, ECONOMY, HAND, TEAM } from './config.js';
-import { MATS } from './models.js';
 import { CanvasPlane, Button3D, PY, FONT, roundRect, drawSun, drawCard, fitFont } from './ui3d.js';
-import { drawSeedCard, cardModel, fitModel } from './cards.js';
+import { drawSeedCard } from './cards.js';
 import { tr } from './i18n.js';
 
 const CARD_W = 0.07;
@@ -19,13 +18,6 @@ class SeedCard extends THREE.Group {
     this.bg = new CanvasPlane(this.w, this.h, 3000);
     this.bg.renderOrder = 5;
     this.add(this.bg);
-    this.maxH = this.h * 0.4;
-    this.maxW = this.w * 0.62;
-    const m = cardModel(type, this.maxH, this.maxW, tilt);
-    m.pivot.position.set(0, -this.h * 0.075, 0.012);
-    this.add(m.pivot);
-    this.spin = m.spin;
-    this.model = m.mesh;
 
     const ov = new THREE.PlaneGeometry(this.w * 0.86, this.h * 0.9).translate(0, -this.h * 0.45, 0);
     this.cool = new THREE.Mesh(ov, new THREE.MeshBasicMaterial({ color: '#1B2A17', transparent: true, opacity: 0.5, depthWrite: false }));
@@ -45,25 +37,22 @@ class SeedCard extends THREE.Group {
   setType(type) {
     this.type = type;
     this.def = type === 'shovel' ? { cost: 0, cooldown: 1 } : PLANTS[type];
-    fitModel(this.model, type, this.maxH, this.maxW);
-    this.spin.rotation.y = type === 'shovel' ? 0.6 : -0.55;
     this._key = '';
     this.redraw(true, false);
   }
 
-  redraw(affordable, highlight) {
-    const key = `${affordable}|${highlight}`;
+  redraw(affordable, highlight, dim = false) {
+    const key = `${affordable}|${highlight}|${dim}`;
     if (key === this._key) return;
     this._key = key;
-    this.bg.draw((ctx, W, H) => drawSeedCard(ctx, W, H, this.type, { affordable, hover: highlight }));
+    this.bg.draw((ctx, W, H) => drawSeedCard(ctx, W, H, this.type, { affordable, hover: highlight, dim }));
   }
 
   setState(coolFrac, affordable, active) {
     this.cool.visible = coolFrac > 0.001;
     this.cool.scale.y = Math.max(0.0001, coolFrac);
     const usable = !active || (coolFrac <= 0.001 && affordable);
-    this.model.material = usable ? MATS.std : MATS.disabled;
-    this.redraw(affordable || !active, this.hover || this.selected);
+    this.redraw(affordable || !active, this.hover || this.selected, !usable);
   }
 
   shake() {
@@ -82,8 +71,6 @@ class SeedCard extends THREE.Group {
     }
     this.position.x = this.baseX + off;
     this.position.z = 0.006 + lift * 0.008;
-    if (lift) this.spin.rotation.y += dt * 2.2;
-    else this.spin.rotation.y += ((this.type === 'shovel' ? 0.6 : -0.55) - this.spin.rotation.y) * Math.min(1, dt * 4);
   }
 }
 
@@ -101,7 +88,9 @@ export class Tray extends THREE.Group {
     const STEPV = 0.104;
     const rows = Math.ceil(n / 2);
     const W = column ? CARD_W + 0.036 : left ? 2 * STEP + 0.05 : 0.04 + 0.08 + 0.016 + n * STEP + 0.07;
-    const H = column ? 0.06 + 0.12 + n * STEPV + 0.02 : left ? 0.13 + rows * ROW + 0.02 : 0.122;
+    // en la bandeja vertical la pausa va sola arriba, grande y naranja (fila extra de TOP)
+    const TOP = column ? 0.056 : 0;
+    const H = column ? TOP + 0.06 + 0.12 + n * STEPV + 0.02 : left ? 0.13 + rows * ROW + 0.02 : 0.122;
     this.rotation.order = 'YXZ'; // primero se inclina, luego se gira hacia el usuario
     this.baseScale = column ? TRAY.scale ?? 1 : 1;
     if (column) {
@@ -155,7 +144,7 @@ export class Tray extends THREE.Group {
     // contador de agua
     this.luzPanel = new CanvasPlane(0.08, 0.1, 3000);
     const yTop = H / 2 - 0.068; // fila superior del atril: agua · pausa/manotazo
-    this.luzPanel.position.set(...(column ? [0, H / 2 - 0.06 - 0.062] : left ? [-STEP / 2, yTop] : [x0 + 0.04 + 0.04, 0]), 0.002);
+    this.luzPanel.position.set(...(column ? [0, H / 2 - TOP - 0.06 - 0.062] : left ? [-STEP / 2, yTop] : [x0 + 0.04 + 0.04, 0]), 0.002);
     this.luzPanel.renderOrder = 5;
     this.add(this.luzPanel);
     this._luz = -1;
@@ -166,7 +155,7 @@ export class Tray extends THREE.Group {
     const cx0 = x0 + 0.04 + 0.08 + 0.016 + STEP / 2;
     // en el atril: dos columnas (la pala en la última casilla)
     const slot = (i) =>
-      column ? [0, H / 2 - 0.06 - 0.12 - 0.008 - CARD_H / 2 - i * STEPV] : left ? [((i % 2) - 0.5) * STEP, yTop - 0.112 - Math.floor(i / 2) * ROW] : [cx0 + i * STEP, 0];
+      column ? [0, H / 2 - TOP - 0.06 - 0.12 - 0.008 - CARD_H / 2 - i * STEPV] : left ? [((i % 2) - 0.5) * STEP, yTop - 0.112 - Math.floor(i / 2) * ROW] : [cx0 + i * STEP, 0];
     this.cards = TEAM.default.map((type, i) => {
       const c = new SeedCard(type, this.tilt);
       const [x, y] = slot(i);
@@ -184,22 +173,28 @@ export class Tray extends THREE.Group {
 
     // pausa y manotazo
     const rx = W / 2 - 0.04;
-    this.menuBtn = new Button3D({ icon: 'pause', w: 0.05, h: 0.046, variant: 'primary' });
-    const yBot = H / 2 - 0.036; // en la bandeja vertical: pausa y empujar arriba del todo
-    this.menuBtn.position.set(...(column ? [-0.026, yBot] : left ? [STEP / 2, yTop + 0.026] : [rx, 0.026]), 0.006);
+    // pausa: botón naranja grande con ícono y texto (antes era pequeño y verde como el resto)
+    this.menuBtn = column
+      ? new Button3D({ icon: 'pause', label: tr('Pausar'), w: W - 0.012, h: 0.054, variant: 'accent', fontScale: 0.36 })
+      : new Button3D({ icon: 'pause', w: 0.05, h: 0.046, variant: 'accent' });
+    if (column) this.menuBtn.i18n = 'Pausar';
+    const yBot = H / 2 - 0.036; // en la bandeja vertical: pausa arriba del todo y debajo el empujón
+    this.menuBtn.position.set(...(column ? [0, H / 2 - 0.034] : left ? [STEP / 2, yTop + 0.026] : [rx, 0.026]), 0.006);
     this.add(this.menuBtn);
     this.pushPanel = new CanvasPlane(0.056, 0.05, 3000);
-    this.pushPanel.position.set(...(column ? [0.026, yBot] : left ? [STEP / 2, yTop - 0.026] : [rx, -0.026]), 0.004);
+    this.pushPanel.position.set(...(column ? [0, yBot - TOP] : left ? [STEP / 2, yTop - 0.026] : [rx, -0.026]), 0.004);
     this.pushPanel.renderOrder = 5;
     this.add(this.pushPanel);
     this._push = -1;
 
-    // barra de avance
-    this.progress = new CanvasPlane(0.42, 0.036, 2600);
-    this.progress.position.set(0, H / 2 + (column ? 0.014 : left ? 0.016 : 0.03), 0.0);
-    if (left || column) this.progress.scale.setScalar(column ? 0.42 : 0.5);
+    // barra de avance: grande, de pie sobre el fondo del tablero (arriba en la vista), mirando al usuario.
+    // main.js la agrega al tablero (topBar) y la muestra junto con la bandeja.
+    this.topBar = new THREE.Group();
+    this.topBar.position.set(0, 0.25, LAYOUT.back + 0.03);
+    this.topBar.rotation.x = -0.22;
+    this.progress = new CanvasPlane(0.6, 0.084, 2600);
     this.progress.renderOrder = 5;
-    this.add(this.progress);
+    this.topBar.add(this.progress);
     this._prog = -1;
     this.levelLabel = 'Nivel 1';
     this.drawLuz(ECONOMY.startWater);

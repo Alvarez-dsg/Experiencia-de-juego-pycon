@@ -11,9 +11,10 @@ import { PlaneTracker } from './planes.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
 import { LEVELS } from './levels.js';
-import { TEAM } from './config.js';
+import { TEAM, PLANT_ORDER, LIGHT } from './config.js';
 import { preloadPycon } from './pycon.js';
 import { loadAssets } from './assets.js';
+import { makePortraits } from './portraits.js';
 import { tr, onLang, getLang, setLang } from './i18n.js';
 
 // Modo de prueba en PC (solo con `npm run dev`): emula unas Meta Quest 3 con el runtime oficial de Meta (IWER).
@@ -58,6 +59,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = LIGHT.shadows;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 document.getElementById('app').appendChild(renderer.domElement);
@@ -79,6 +82,38 @@ scene.add(new THREE.HemisphereLight('#ffffff', '#6b5a3a', 1.6));
 const sun = new THREE.DirectionalLight('#fff1d6', 2.0);
 sun.position.set(0.6, 2.2, 1.4);
 scene.add(sun);
+// sombras: la cámara de sombra del sol sigue al tablero (que el usuario coloca en su mesa)
+const SUN_DIR = sun.position.clone().normalize();
+if (LIGHT.shadows) {
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(LIGHT.mapSize, LIGHT.mapSize);
+  sun.shadow.intensity = LIGHT.intensity;
+  sun.shadow.radius = LIGHT.radius;
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.002;
+  scene.add(sun.target);
+}
+const _sunAt = new THREE.Vector3();
+function followSun() {
+  if (!LIGHT.shadows) return;
+  board.root.getWorldPosition(_sunAt);
+  const s = board.root.scale.x;
+  sun.target.position.copy(_sunAt);
+  sun.position.copy(_sunAt).addScaledVector(SUN_DIR, 1.5 * s);
+  const c = sun.shadow.camera;
+  const r = 0.62 * s;
+  if (c.right !== r) {
+    c.left = -r;
+    c.right = r;
+    c.top = r;
+    c.bottom = -r;
+    c.near = 0.5 * s;
+    c.far = 2.6 * s;
+    c.updateProjectionMatrix();
+  }
+}
+// retratos de las cartas (imágenes hechas una vez con los modelos; las cartas ya no llevan el modelo 3D)
+makePortraits(renderer, [...new Set([...PLANT_ORDER, 'jabillo', 'shovel'])]);
 
 // ───────────────────────── entorno de escritorio (simulador) ─────────────────────────
 const desk = new THREE.Group();
@@ -133,6 +168,7 @@ game.setLevel(START_LEVEL);
 const tray = new Tray();
 tray.visible = false;
 board.root.add(tray);
+board.root.add(tray.topBar); // barra de avance grande sobre el fondo del tablero
 const planes = new PlaneTracker(scene);
 planes.setVisible(false);
 
@@ -448,6 +484,8 @@ function tick(dt, frame = null) {
   hud.update(dt, head, headQ);
   fx.update(dt);
 
+  tray.topBar.visible = tray.visible;
+  followSun();
   if (app.trayAppear < 1) {
     app.trayAppear = Math.min(1, app.trayAppear + dt * 3);
     const t = app.trayAppear;

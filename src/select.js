@@ -2,13 +2,11 @@
 // Al acercar la mano (o pasar el mouse) sobre una carta, la carta grande muestra su habilidad.
 import * as THREE from 'three';
 import { PLANT_ORDER, TEAM } from './config.js';
-import { MATS } from './models.js';
 import { CanvasPlane, Pressable, Button3D, PY, FONT, drawCard, drawEyebrow, drawPyBrand, roundRect, popIn, fitFont } from './ui3d.js';
-import { drawSeedCard, cardModel, fitModel, AbilityCard } from './cards.js';
+import { drawSeedCard, AbilityCard } from './cards.js';
 import { sfx } from './audio.js';
 import { tr } from './i18n.js';
 
-const TILT = -0.25; // inclinación del panel (la misma que los demás paneles)
 
 /** Carta pulsable de la selección (o ranura del equipo si `slot` es un número). */
 class PickCard extends Pressable {
@@ -18,11 +16,6 @@ class PickCard extends Pressable {
     this.face = new CanvasPlane(w, h, 3000);
     this.face.renderOrder = 12;
     this.add(this.face);
-    this.maxH = h * 0.4;
-    this.maxW = w * 0.62;
-    this.m = cardModel(type || 'heliconia', this.maxH, this.maxW, TILT);
-    this.m.pivot.position.set(0, -h * 0.075, 0.01);
-    this.add(this.m.pivot);
     this.picked = false;
     this.shakeT = 0;
     this.t = Math.random() * 5;
@@ -32,8 +25,6 @@ class PickCard extends Pressable {
   }
   setType(type) {
     this.type = type;
-    this.m.pivot.visible = !!type;
-    if (type) fitModel(this.m.mesh, type, this.maxH, this.maxW);
     this.redraw(true);
   }
   setPicked(v) {
@@ -46,7 +37,6 @@ class PickCard extends Pressable {
     if (!force && key === this._key) return;
     this._key = key;
     this.face.draw((ctx, W, H) => drawSeedCard(ctx, W, H, this.type, { hover: this.hover && !!this.type, picked: this.picked, empty: !this.type, index: (this.slot ?? 0) + 1 }));
-    this.m.mesh.material = this.picked ? MATS.disabled : MATS.std;
   }
   shake() {
     this.shakeT = 0.4;
@@ -64,9 +54,6 @@ class PickCard extends Pressable {
     }
     this.position.x = this.baseX + off;
     this.position.z = 0.004 + lift * 0.008;
-    const spin = this.m.spin;
-    if (lift) spin.rotation.y += dt * 2.2;
-    else spin.rotation.y += (-0.55 - spin.rotation.y) * Math.min(1, dt * 4);
   }
 }
 
@@ -116,7 +103,7 @@ export class TeamSelect extends THREE.Group {
     });
     // carta mínima del personaje (a la derecha)
     const rx = (this.grid.x + this.grid.w + W / 2) / 2;
-    this.ability = new AbilityCard(0.2, 0.29, TILT);
+    this.ability = new AbilityCard(0.2, 0.29);
     this.ability.position.set(rx, this.grid.y - 0.145, 0.004);
     this.add(this.ability);
 

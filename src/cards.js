@@ -1,11 +1,10 @@
 // Cartas de personaje con la estética de PyCon Colombia 2028.
-//  · Carta de semilla (bandeja y selección): marco crema con borde naranja, ventana con el personaje
-//    en 3D, caja blanca con el costo y el ícono de agua, e insignia redonda con el rol.
+//  · Carta de semilla (bandeja y selección): marco crema con borde naranja, ventana con el retrato del
+//    personaje (imagen hecha con su modelo, ver portraits.js), caja blanca con el costo y el ícono de agua, e insignia redonda con el rol.
 //  · Carta de habilidad (selección): nombre arriba, arte grande, tipo, habilidad y estadísticas.
 import * as THREE from 'three';
 import { PLANTS, ABILITIES } from './config.js';
-import { MATS, addOutline, setGeometry } from './models.js';
-import { plantGeometry } from './defenders.js';
+import { drawPortrait } from './portraits.js';
 import { CanvasPlane, PY, FONT, roundRect, wrapText, fitFont, drawSun, drawEyebrow, drawAvatarBg, drawCard, drawPyBrand } from './ui3d.js';
 import { tr } from './i18n.js';
 
@@ -228,6 +227,7 @@ export function drawSeedCard(ctx, W, H, type, st = {}) {
   drawCard(ctx, pad, pad, W - pad * 2, H - pad * 2, W * 0.1, { lw: W * (st.hover ? 0.04 : 0.025), shadow: !st.hover });
   // ventana del personaje
   drawAvatarBg(ctx, W * 0.11, H * 0.075, W * 0.78, H * 0.56, hueOf(type), W * 0.06);
+  drawPortrait(ctx, type, W * 0.14, H * 0.1, W * 0.72, H * 0.52, { dim: st.dim || st.picked });
   // nombre
   ctx.fillStyle = PY.ink;
   ctx.textAlign = 'center';
@@ -280,48 +280,15 @@ export function drawSeedCard(ctx, W, H, type, st = {}) {
   }
 }
 
-/** Modelo 3D del personaje para una carta: pivot (compensa la inclinación) → giro → malla centrada. */
-export function cardModel(type, maxH, maxW, tilt = 0) {
-  const pivot = new THREE.Group();
-  pivot.rotation.x = -tilt;
-  const spin = new THREE.Group();
-  pivot.add(spin);
-  const mesh = new THREE.Mesh(plantGeometry(type), MATS.std);
-  addOutline(mesh, 0.0014);
-  spin.add(mesh);
-  fitModel(mesh, type, maxH, maxW);
-  spin.rotation.y = type === 'shovel' ? 0.6 : -0.55;
-  return { pivot, spin, mesh };
-}
-
-export function fitModel(mesh, type, maxH, maxW) {
-  const geo = plantGeometry(type);
-  setGeometry(mesh, geo);
-  const bb = geo.boundingBox;
-  const h = bb.max.y - bb.min.y;
-  const w = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z);
-  const k = Math.min(maxH / h, maxW / w);
-  mesh.scale.setScalar(k);
-  mesh.position.set((-(bb.min.x + bb.max.x) / 2) * k, -bb.min.y * k, (-(bb.min.z + bb.max.z) / 2) * k);
-}
-
 /** Carta grande de habilidad (composición tipo carta coleccionable). */
 export class AbilityCard extends THREE.Group {
-  constructor(w = 0.2, h = 0.29, tilt = 0) {
+  constructor(w = 0.2, h = 0.29) {
     super();
     this.w = w;
     this.h = h;
     this.bg = new CanvasPlane(w, h, 2600);
     this.bg.renderOrder = 11;
     this.add(this.bg);
-    // ventana del arte: 5 %–67 % del alto (carta mínima)
-    this.artH = h * 0.62;
-    const m = cardModel('heliconia', this.artH * 0.72, w * 0.6, tilt);
-    this.pivot = m.pivot;
-    this.spin = m.spin;
-    this.mesh = m.mesh;
-    this.pivot.position.set(0, h / 2 - h * 0.62, 0.014);
-    this.add(this.pivot);
     this.type = null;
     this.t = 0;
   }
@@ -329,9 +296,6 @@ export class AbilityCard extends THREE.Group {
   show(type) {
     if (type === this.type) return;
     this.type = type;
-    fitModel(this.mesh, type, this.artH * 0.72, this.w * 0.6);
-    this.spin.rotation.y = -0.55;
-    this.t = 0;
     const def = defOf(type);
     this.bg.draw((ctx, W, H) => {
       // carta mínima (wireframe): arte grande, nombre y lo que hace en dos o tres palabras
@@ -341,6 +305,7 @@ export class AbilityCard extends THREE.Group {
       ctx.save();
       ctx.clip();
       drawAvatarBg(ctx, W * 0.07, H * 0.05, W * 0.86, H * 0.62, hueOf(type), 0);
+      drawPortrait(ctx, type, W * 0.12, H * 0.08, W * 0.76, H * 0.56);
       ctx.restore();
       roundRect(ctx, W * 0.07, H * 0.05, W * 0.86, H * 0.62, W * 0.05);
       ctx.lineWidth = W * 0.008;
@@ -446,8 +411,5 @@ export class AbilityCard extends THREE.Group {
     });
   }
 
-  update(dt) {
-    this.t += dt;
-    this.spin.rotation.y = -0.55 + Math.sin(this.t * 0.9) * 0.5;
-  }
+  update() {}
 }

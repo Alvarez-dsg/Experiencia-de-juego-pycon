@@ -82,6 +82,7 @@ export function createDefender(type) {
   const d = { root, meshes: [], mat: MATS.std };
   const add = (geo, parent = root) => {
     const m = new THREE.Mesh(geo, MATS.std);
+    m.castShadow = true;
     addOutline(m, 0.0009);
     parent.add(m);
     d.meshes.push(m);

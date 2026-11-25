@@ -8,8 +8,11 @@ const PINCH_ON = 0.022; // m entre pulgar e índice para empezar a pellizcar
 const PINCH_OFF = 0.04; // m para soltar (histéresis)
 // "Tirito": pellizcar índice y pulgar y soltar el índice de golpe, como quien lanza algo con el dedo
 const FLICK_OPEN = 0.055; // m de apertura que cuenta como soltar el índice
-const FLICK_HOLD = 0.08; // s mínimos de pellizco antes de soltar
-const FLICK_FAST = 0.16; // s máximos entre dejar de pellizcar y abrir del todo
+const FLICK_HOLD = 0.15; // s mínimos de pellizco antes de soltar
+const FLICK_FAST = 0.14; // s máximos entre dejar de pellizcar y abrir del todo
+// Mano abierta (para el manotazo): las puntas de índice, medio y anular lejos de la muñeca.
+// Al señalar una gota o al pellizcar, medio y anular están doblados y no cuenta.
+const OPEN_TIP = 0.13; // m de la punta a la muñeca
 
 export class InputManager {
   constructor(renderer, scene, camera, dom) {
@@ -121,6 +124,7 @@ export class InputManager {
       let pressed = false;
       s.active = false;
       s.flick = false;
+      s.open = false;
       if (inXR && s.kind === 'hand') {
         const it = s.hand.joints['index-finger-tip'];
         const th = s.hand.joints['thumb-tip'];
@@ -144,6 +148,9 @@ export class InputManager {
               s.pinchSince = 0;
             } else if (now - s.lastPinch > FLICK_FAST) s.pinchSince = 0;
           }
+          const wr = s.hand.joints['wrist'];
+          const far = (j) => s.hand.joints[j]?.visible && wr?.visible && s.hand.joints[j].position.distanceTo(wr.position) > OPEN_TIP;
+          s.open = far('index-finger-tip') && far('middle-finger-tip') && far('ring-finger-tip');
           s.point.copy(it.position).add(th.position).multiplyScalar(0.5);
           s.dotIndex.position.copy(it.position);
           s.dotThumb.position.copy(th.position);

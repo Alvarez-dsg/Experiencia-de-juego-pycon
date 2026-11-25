@@ -33,20 +33,27 @@ export class Board {
       this.content.add(m);
       return m;
     };
-    add(buildTerrain(), terrainMat);
+    add(buildTerrain(), terrainMat).receiveShadow = true;
     add(buildSkirt(), new THREE.MeshLambertMaterial({ vertexColors: true, clippingPlanes: [riseClip], side: THREE.DoubleSide }));
     // casillas por fila: solo se ven las filas abiertas en el nivel actual
     this.rowTiles = [];
     for (let r = 0; r < BOARD.rows; r++) {
       const g = buildTiles(r);
-      this.rowTiles.push(g ? add(g, terrainMat) : null);
+      const t = g ? add(g, terrainMat) : null;
+      if (t) t.receiveShadow = true;
+      this.rowTiles.push(t);
     }
-    add(buildProps(), MATS.std, 0.0007);
+    add(buildProps(), MATS.std, 0.0007).castShadow = true;
     // vegetación de la landing de PyCon 2028 (hojas finas: sin contorno y por las dos caras)
     const vegGeo = buildVegetation();
-    if (vegGeo) add(vegGeo, toon({ side: THREE.DoubleSide }));
+    if (vegGeo) {
+      const vegMat = toon({ side: THREE.DoubleSide });
+      add(vegGeo, vegMat).receiveShadow = true;
+      // árboles grandes de la orilla: proyectan sombra sobre el tablero
+      if (vegGeo.userData.trees) add(vegGeo.userData.trees, vegMat).castShadow = true;
+    }
     const comp = buildCompany();
-    add(comp.geo, MATS.std, 0.0009);
+    add(comp.geo, MATS.std, 0.0009).castShadow = true;
     this.smokeOrigin = comp.smoke;
     this.smokeT = 0;
 

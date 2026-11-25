@@ -27,6 +27,7 @@ export class Interaction {
     this.drags = new Map();
     this.hist = new Map(); // historial de posiciones por fuente → velocidad de la mano
     this.pushLock = new Map();
+    this.pinchUsed = new Map(); // el pellizco actual tomó algo (gota, carta, botón): al soltarlo no hay tirito
     this.onEmptyPress = null; // lo usa main para colocar el tablero sobre una mesa
   }
 
@@ -112,7 +113,7 @@ export class Interaction {
     }
     const hitList = [];
     if (isShown(this.tray)) {
-      for (const card of this.tray.allCards) if (card.visible) hitList.push([card.bg, { kind: 'card', card }], [card.model, { kind: 'card', card }]);
+      for (const card of this.tray.allCards) if (card.visible) hitList.push([card.bg, { kind: 'card', card }]);
     }
     for (const b of BUTTONS) if (b.enabled && isShown(b)) hitList.push([b.face, { kind: 'button', button: b }]);
     for (const [obj, target] of hitList) {
@@ -166,6 +167,8 @@ export class Interaction {
       }
 
       if (src.justPressed) {
+        this.pinchUsed.set(src.id, !!target);
+        if (target) this.calm(src.id);
         if (!target) this.onEmptyPress?.(src);
         else if (target.kind === 'orb') this.game.collectOrb(target.orb);
         else if (target.kind === 'button') target.button.press();
@@ -173,7 +176,7 @@ export class Interaction {
         else if (target.kind === 'enemy') this.game.pushAt(target.enemy.x, target.enemy.z);
       }
       // tirito (pellizcar y soltar el índice): empuja a los invasores hacia donde apunta el dedo
-      if (src.flick && !drag) this.flick(src);
+      if (src.flick && !drag && !this.pinchUsed.get(src.id)) this.flick(src);
       const d = this.drags.get(src.id);
       if (d) {
         // al soltar se usa la última casilla válida: al abrir los dedos el punto del pellizco se desplaza
@@ -193,7 +196,10 @@ export class Interaction {
     const tip = src.tip;
     for (const o of this.game.orbs) {
       if (o.state === 'collect' || o.state === 'gone') continue;
-      if (o.group.getWorldPosition(_w).distanceTo(tip) < 0.03) this.game.collectOrb(o);
+      if (o.group.getWorldPosition(_w).distanceTo(tip) < 0.03) {
+        this.game.collectOrb(o);
+        this.calm(src.id);
+      }
     }
     for (const b of BUTTONS) {
       if (!b.enabled || !isShown(b)) {
@@ -207,6 +213,12 @@ export class Interaction {
         b.press();
       } else if (!inside && _l.z > 0.02) b._poked.delete(src.id);
     }
+  }
+
+  /** Después de tomar una gota, pulsar algo o soltar una carta, la mano no empuja por un momento
+   *  (el movimiento de alejar la mano o de abrir los dedos no debe contar como empujón). */
+  calm(id, ms = 1000) {
+    this.pushLock.set(id, Math.max(this.pushLock.get(id) || 0, performance.now() + ms));
   }
 
   /** Tirito con el índice: el empujón cae donde apunta el dedo (o justo debajo de la mano). */
@@ -236,6 +248,7 @@ export class Interaction {
     if (game.state !== 'playing') return;
     const now = performance.now();
     if ((this.pushLock.get(src.id) || 0) > now) return;
+    if (!src.open) return; // solo con la mano abierta (no al señalar una gota ni al pellizcar)
     const P = HAND.push;
     const s = this.board.root.scale.x;
     this.board.content.worldToLocal(_l.copy(src.point));
@@ -387,6 +400,7 @@ export class Interaction {
     }
     d.card.selected = false;
     this.drags.delete(d.src.id);
+    this.calm(d.src.id);
   }
 
   cancelAll() {

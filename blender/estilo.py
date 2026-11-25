@@ -525,9 +525,50 @@ def build_scene(name, models, lineup, gap=0.85, place=None, lift=None):
     return sc, objs
 
 
+AO_DIST, AO_K = 0.12, 0.45  # alcance (casillas) y fuerza de la oclusión ambiental horneada
+
+
+def bake_ao(scene, objs, samples=48):
+    """Hornea oclusión ambiental (Cycles) en el atributo de color "AO" de cada pieza, en la pose de la escena
+    (así las piernas oscurecen un poco el cuerpo, la cabeza el cuello, el suelo los pies). Sin el contorno."""
+    sc = scene
+    prev = (sc.render.engine, sc.cycles.samples if hasattr(sc, 'cycles') else None)
+    sc.render.engine = 'CYCLES'
+    sc.cycles.samples = samples
+    sc.world.light_settings.distance = AO_DIST
+    mods = [m for o in sc.objects for m in o.modifiers if m.type == 'SOLIDIFY' and m.show_render]
+    for m in mods:
+        m.show_render = False
+    vl = sc.view_layers[0]
+    for o in objs.values():
+        me = o.data
+        if 'AO' not in me.color_attributes:
+            me.color_attributes.new('AO', 'FLOAT_COLOR', 'CORNER')
+        me.color_attributes.active_color = me.color_attributes['AO']
+        with bpy.context.temp_override(scene=sc, view_layer=vl, active_object=o, object=o, selected_objects=[o],
+                                       selected_editable_objects=[o]):
+            bpy.ops.object.bake(type='AO', target='VERTEX_COLORS')
+        me.color_attributes.active_color = me.color_attributes['Col']
+    for m in mods:
+        m.show_render = True
+    sc.render.engine = prev[0]
+
+
 def export_glb(path, objs):
     """Exporta cada pieza en su origen (sin el modificador del contorno) para el juego.
-    El peso del grupo "Tinta" viaja en el alfa del color (0 = esa parte no lleva contorno en el juego)."""
+    El peso del grupo "Tinta" viaja en el alfa del color (0 = esa parte no lleva contorno en el juego) y, si se
+    horneó la oclusión (bake_ao), oscurece un poco el color. Llamar justo después de construir los modelos."""
+    for o in objs.values():
+        ao = o.data.color_attributes.get('AO')
+        if ao:
+            col = o.data.color_attributes['Col']
+            for i, d in enumerate(col.data):
+                a = ao.data[i].color[0]
+                k = 1.0 - AO_K * (1.0 - a)
+                c = d.color
+                d.color = (c[0] * k, c[1] * k, c[2] * k, c[3])
+            # el exportador toma el color "de render": que sea Col (el AO ya va multiplicado en él)
+            o.data.color_attributes.remove(ao)
     for o in objs.values():
         me, g = o.data, o.vertex_groups.get('Tinta')
         ink = [0.0] * len(me.vertices)
@@ -550,6 +591,10 @@ def export_glb(path, objs):
     for o in objs.values():
         tmp.collection.objects.link(o)
     with bpy.context.temp_override(scene=tmp, view_layer=tmp.view_layers[0]):
+        for o in objs.values():
+            ca = o.data.color_attributes
+            ca.active_color = ca['Col']
+            ca.render_color_index = ca.active_color_index
         bpy.ops.export_scene.gltf(filepath=path, use_selection=False, use_active_scene=True, export_format='GLB',
                                   export_materials='NONE', export_vertex_color='ACTIVE', export_texcoords=False,
                                   export_yup=True, export_apply=False)
