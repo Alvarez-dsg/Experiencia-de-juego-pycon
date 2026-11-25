@@ -1,4 +1,4 @@
-// Modelos hechos en Blender (ver blender/animales.py) y vegetación de la landing de PyCon 2028.
+// Modelos hechos en Blender (ver blender/animales.py e invasores.py) y vegetación de la landing de PyCon 2028.
 // Se cargan una sola vez al inicio. Cada pieza se convierte al mismo formato que GeoBuilder
 // (no indexada, con color RGB por vértice) para poder mezclarla con el resto de la escena.
 import * as THREE from 'three';
@@ -8,7 +8,7 @@ const GEO = {};
 
 function normalize(geo) {
   const g = geo.index ? geo.toNonIndexed() : geo.clone();
-  for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(name)) g.deleteAttribute(name);
+  for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'color', 'ink'].includes(name)) g.deleteAttribute(name);
   const c = g.attributes.color;
   const n = g.attributes.position.count;
   const col = new Float32Array(n * 3);
@@ -18,6 +18,12 @@ function normalize(geo) {
     col[i * 3 + 2] = c ? c.getZ(i) : 0.5;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  // los modelos de Blender traen en el alfa del color dónde va el contorno (0 = sin contorno)
+  if (c && c.itemSize === 4) {
+    const ink = new Float32Array(n);
+    for (let i = 0; i < n; i++) ink[i] = c.getW(i);
+    g.setAttribute('ink', new THREE.BufferAttribute(ink, 1));
+  }
   if (!g.attributes.normal) g.computeVertexNormals();
   g.computeBoundingBox();
   g.computeBoundingSphere();
@@ -38,7 +44,7 @@ async function load(url) {
 export async function loadAssets() {
   const base = import.meta.env.BASE_URL;
   await Promise.all(
-    ['models/animales.glb', 'models/vegetacion.glb'].map((f) => load(base + f).catch((e) => console.warn('No se pudo cargar', f, e))),
+    ['models/animales.glb', 'models/invasores.glb', 'models/vegetacion.glb'].map((f) => load(base + f).catch((e) => console.warn('No se pudo cargar', f, e))),
   );
 }
 

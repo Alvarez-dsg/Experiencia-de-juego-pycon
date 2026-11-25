@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { GeoBuilder, mulberry32, seg, cyl, ball, cone, capsule, rbox, eye, blush, U, MATS, addOutline, createShadow, createHpBar } from './models.js';
 import { ENEMIES } from './config.js';
+import { asset } from './assets.js';
 
 const SKIN = { independiente: '#e9b58c', profesional: '#d9a07a', motosierra: '#c98e62' };
 const INK_W = 0.0009;
@@ -183,9 +184,45 @@ function desbrozadoraGeos() {
 }
 
 const BUILD = { excavadora: excavadoraGeos, bulldozer: bulldozerGeos, astilladora: astilladoraGeos, desbrozadora: desbrozadoraGeos };
+
+// ───────────────────────── modelos de Blender (public/models/invasores.glb) ─────────────────────────
+// Mismo rig que los de código: cuerpo en el suelo, pierna con pivote en la cadera, brazo en el hombro.
+// Las máquinas se construyen 1,35 veces más grandes (MAQ_S en blender/invasores.py): sus pivotes y puntos también.
+const MAQ_S = 1.35;
+const inMeters = (g) => {
+  const c = g.clone();
+  c.scale(U, U, U);
+  c.computeBoundingBox();
+  c.computeBoundingSphere();
+  return c;
+};
+function glbGeos(type, fallback) {
+  const body = asset(type + '_cuerpo');
+  if (!body) return null;
+  const out = { ...fallback, body: inMeters(body) };
+  if (ENEMIES[type].kind === 'person') {
+    out.leg = inMeters(asset(type + '_pierna'));
+    out.arm = inMeters(asset(type + '_brazo'));
+    return out;
+  }
+  const s = (p) => p && p.map((v) => v * MAQ_S);
+  if (asset(type + '_brazo')) out.arm = inMeters(asset(type + '_brazo'));
+  if (asset(type + '_tambor')) out.drum = inMeters(asset(type + '_tambor'));
+  out.armPos = s(fallback.armPos);
+  out.drumPos = s(fallback.drumPos);
+  out.exhaust = s(fallback.exhaust);
+  out.chips = s(fallback.chips);
+  out.top = fallback.top * MAQ_S;
+  out.scale = MAQ_S;
+  return out;
+}
+
 const cache = {};
 function geos(type) {
-  if (!cache[type]) cache[type] = ENEMIES[type].kind === 'person' ? personGeos(type) : BUILD[type]();
+  if (!cache[type]) {
+    const code = ENEMIES[type].kind === 'person' ? personGeos(type) : BUILD[type]();
+    cache[type] = glbGeos(type, code) || code;
+  }
   return cache[type];
 }
 
@@ -229,7 +266,7 @@ export function createEnemy(type) {
     e.bar.group.visible = false;
     root.add(e.bar.group);
   }
-  e.shadow = createShadow(machine ? 0.05 : 0.022);
+  e.shadow = createShadow(machine ? 0.05 * (g.scale ?? 1) : 0.022);
   return e;
 }
 

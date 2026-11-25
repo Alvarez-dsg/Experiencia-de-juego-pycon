@@ -23,38 +23,90 @@ const toonRamp = (() => {
 })();
 export const toon = (o = {}) => new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: toonRamp, clippingPlanes: CLIP, ...o });
 
+// ───────────────────────── sombreado de caricatura (el mismo de blender/estilo.py) ─────────────────────────
+// Dos tonos con corte limpio según el sol (la luz direccional). La sombra corre el tono del color hacia el
+// azul-violeta (naranja → rojizo, verde → azulado, café → vino) y hay un brillo pequeño donde la superficie mira al sol.
+export const CEL = { cut: -0.05, edge: 0.025, hueTarget: 0.72, hueShift: 0.09, sat: 1.05, val: 0.58, tint: [0.56, 0.5, 0.72], hlCut: 0.93, hl: 0.16 };
+const f3 = (v) => v.toFixed(4);
+const CEL_GLSL = /* glsl */ `
+vec3 celHsv(vec3 c) {
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+vec3 celRgb(vec3 c) {
+  vec3 p = abs(fract(c.xxx + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+  return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+}
+vec3 celShadow(vec3 col) {
+  vec3 h = celHsv(col);
+  float d = mod(${f3(CEL.hueTarget)} - h.x + 0.5, 1.0) - 0.5;
+  vec3 hs = celRgb(vec3(fract(h.x + d * ${f3(CEL.hueShift)}), min(1.0, h.y * ${f3(CEL.sat)}), h.z * ${f3(CEL.val)}));
+  return mix(col * vec3(${CEL.tint.map(f3).join(', ')}), hs, clamp(h.y * 4.0, 0.0, 1.0));
+}
+`;
+const CEL_OUT = /* glsl */ `
+  #if NUM_DIR_LIGHTS > 0
+    float celNdl = dot(normalize(normal), directionalLights[0].direction);
+  #else
+    float celNdl = 1.0;
+  #endif
+  float celLit = smoothstep(${f3(CEL.cut - CEL.edge)}, ${f3(CEL.cut + CEL.edge)}, celNdl);
+  float celHl = smoothstep(${f3(CEL.hlCut - CEL.edge)}, ${f3(CEL.hlCut + CEL.edge)}, celNdl);
+  vec3 celCol = mix(celShadow(diffuseColor.rgb), diffuseColor.rgb, celLit);
+  celCol = mix(celCol, vec3(1.0, 0.97, 0.9), celHl * ${f3(CEL.hl)});
+  vec3 outgoingLight = celCol + totalEmissiveRadiance;`;
+/** Material de los personajes y piezas con contorno: sombreado de caricatura sin depender de la intensidad de la luz. */
+export function celMat(o = {}) {
+  const m = toon(o);
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader
+      .replace('void main() {', CEL_GLSL + 'void main() {')
+      .replace('vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;', CEL_OUT);
+  };
+  m.customProgramCacheKey = () => 'cel';
+  return m;
+}
+
 export const MATS = {
-  std: toon(),
-  flash: toon({ emissive: '#ffffff', emissiveIntensity: 0.55 }),
-  slow: toon({ color: '#c8f7a6', emissive: '#1f4d10' }), // envenenado por la rana dardo
-  hurt: toon({ color: '#f0b9a0' }),
-  charred: toon({ color: '#3a3027' }),
-  disabled: toon({ color: '#7b7b7b' }),
-  ghost: toon({ transparent: true, opacity: 0.7, depthWrite: false }),
-  preview: toon({ transparent: true, opacity: 0.4, depthWrite: false, emissive: '#1d5a23' }),
+  std: celMat(),
+  flash: celMat({ emissive: '#ffffff', emissiveIntensity: 0.55 }),
+  slow: celMat({ color: '#c8f7a6', emissive: '#1f4d10' }), // envenenado por la rana dardo
+  hurt: celMat({ color: '#f0b9a0' }),
+  charred: celMat({ color: '#3a3027' }),
+  disabled: celMat({ color: '#7b7b7b' }),
+  ghost: celMat({ transparent: true, opacity: 0.7, depthWrite: false }),
+  preview: celMat({ transparent: true, opacity: 0.4, depthWrite: false, emissive: '#1d5a23' }),
 };
 
 // ───────────────────────── contorno de caricatura ─────────────────────────
 // Casco invertido: la misma geometría, inflada a lo largo de sus normales y dibujada por dentro en negro.
 const INK = '#21170f';
+// Los modelos de Blender traen el atributo `ink` (0 = esa parte no lleva contorno: brillos, rayas, dedos).
+export const INK_GLB = 0.0007; // grosor del contorno de los modelos de Blender (m)
 const outlineMats = new Map();
-export function outlineMat(t) {
-  if (!outlineMats.has(t)) {
+export function outlineMat(t, weighted = false) {
+  const key = t + (weighted ? 'w' : '');
+  if (!outlineMats.has(key)) {
     const m = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide, clippingPlanes: CLIP });
     m.onBeforeCompile = (sh) => {
       sh.uniforms.uInk = { value: t };
       sh.vertexShader = sh.vertexShader
-        .replace('void main() {', 'uniform float uInk;\nvoid main() {')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * uInk;');
+        .replace('void main() {', `uniform float uInk;\n${weighted ? 'attribute float ink;\n' : ''}void main() {`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>\ntransformed += normalize(normal) * uInk${weighted ? ' * ink' : ''};`);
     };
-    m.customProgramCacheKey = () => 'ink' + t;
-    outlineMats.set(t, m);
+    m.customProgramCacheKey = () => 'ink' + key;
+    outlineMats.set(key, m);
   }
-  return outlineMats.get(t);
+  return outlineMats.get(key);
 }
+const outlineFor = (geo, t) => (geo.attributes.ink ? outlineMat(INK_GLB, true) : outlineMat(t));
 /** Añade el contorno negro a una malla (la sigue en todo: posición, escala, visibilidad). */
 export function addOutline(mesh, t = 0.001) {
-  const o = new THREE.Mesh(mesh.geometry, outlineMat(t));
+  const o = new THREE.Mesh(mesh.geometry, outlineFor(mesh.geometry, t));
+  o.userData.inkT = t;
   o.raycast = () => {};
   o.userData.outline = true;
   mesh.add(o);
@@ -63,7 +115,11 @@ export function addOutline(mesh, t = 0.001) {
 /** Cambia la geometría de una malla y la de su contorno. */
 export function setGeometry(mesh, geo) {
   mesh.geometry = geo;
-  for (const c of mesh.children) if (c.userData.outline) c.geometry = geo;
+  for (const c of mesh.children) {
+    if (!c.userData.outline) continue;
+    c.geometry = geo;
+    c.material = outlineFor(geo, c.userData.inkT);
+  }
 }
 
 // ───────────────────────── utilidades de construcción ─────────────────────────

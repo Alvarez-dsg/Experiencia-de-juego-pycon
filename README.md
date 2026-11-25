@@ -22,13 +22,16 @@ inglés** (se elige en la pantalla de inicio).
 
 ## Qué incluye
 
-- **Animales modelados en Blender** (`blender/animales.py`, `blender/animales.blend`, vista previa en
-  `blender/render.png`): rana dardo, chigüiro, anaconda, mono, tortuga (y su caparazón), guacamaya y mariposa morfo
-  sobre su matica, con los colores y la forma del documento de personajes. Acabado de **arcilla/fieltro**: formas
-  fusionadas con remesh de vóxeles, suavizadas, reducidas a ~2000 triángulos para la Quest, con colores por vértice,
-  oclusión ambiental horneada y una textura de fieltro suave. Se exportan a `public/models/animales.glb`.
-  Para regenerarlos: `blender -b --python blender/animales.py -- public/models/animales.glb blender/animales.blend blender/render.png`.
-- **Vegetación y río de la landing de PyCon 2028**: `blender/vegetacion.py` extrae pasto, helechos, heliconias,
+- **Animales e invasores modelados en Blender** con el mismo estilo de juguete liso con contorno de tinta
+  (`blender/estilo.py`): `blender/animales.py` (rana dardo, chigüiro, anaconda, mono, tortuga y su caparazón,
+  guacamaya y mariposa morfo sobre su matica) y `blender/invasores.py` (leñador independiente, profesional y
+  motosierrista, por piezas para animarlos, y excavadora, bulldozer, astilladora y desbrozadora, 1,35 veces más
+  grandes). Vistas previas en `blender/render.png`, `render_invasores.png` y `render_maquinas.png`. Se ejecutan dentro
+  de Blender (conexión MCP o `blender -b --python ...`) y `export_glb` los pasa a `public/models/animales.glb` e
+  `invasores.glb`; el alfa del color dice qué partes llevan contorno. En el juego el **sombreado de caricatura** es el
+  mismo de Blender (`CEL` en `src/models.js`): dos tonos con corte limpio, sombra que corre el tono del color y un brillo
+  pequeño donde mira el sol.
+- **Vegetación y río de la landing de PyCon 2028**: `blender/vegetacion.py` extrae pasto, helechos, heliconias, árboles grandes y frondosos (la orilla de selva del usuario),
   bromelias, musgo, victorias amazónicas, camalotes, raíces de mangle, palmas y cecropias del recorrido 3D de la página
   (`recorrido-amazonas.glb`) a `public/models/vegetacion.glb`. El río usa el mapa de normales del agua de la página
   (`public/tex/agua_n.jpg`).

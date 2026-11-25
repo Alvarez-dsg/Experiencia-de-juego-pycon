@@ -71,7 +71,7 @@ export function plantGeometry(type) {
 export const FACE_YAW = { mono: -0.5, rana: -0.45, guacamaya: -0.5, chiguiro: -0.45, tortuga: -0.4, anaconda: -0.45, mariposa: -0.35, ceiba: -0.4, jabillo: -0.5 };
 
 // Boca de los tiradores: [x, y] en casillas, desde el centro de la casilla
-export const MUZZLE = { rana: [0.24, 0.2], guacamaya: [0.21, 0.5] };
+export const MUZZLE = { rana: [0.3, 0.27], guacamaya: [0.22, 0.52] };
 
 const partCache = {};
 const part = (key, fn, glb) => (partCache[key] ??= (glb && fromGlb(glb)) || unit(fn)());

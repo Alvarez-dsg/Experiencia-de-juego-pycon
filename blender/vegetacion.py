@@ -22,7 +22,10 @@ PICK = {'helecho':('Planta_Helecho_low',0.55),'pasto':('Pasto_Alto_low',0.34),'h
   'musgo_a':('Arbusto_Musgo_A_low.001',0.3),'musgo_b':('Arbusto_Musgo_B_low.001',0.32),'helecho_arb':('Helecho_Arboreo',1.3),
   'cecropia':('Cecropia',2.6),'aguaje':('Palma_Aguaje',2.4),'bromelia':('Bromelia',0.45),'camalote':('Camalote',0.22),
   'raices':('Raices_Zancudas',1.7),'victoria':('Victoria_Amazonica_A',0.05),'victoria_b':('Victoria_Amazonica_B',0.04),
-  'hongos':('Hongos_Suelo',0.18),'orquidea':('Orquidea',0.4),'flores':('Planta_Flores_low',0.4),'roca':('Roca_A_low',0.3),'tronco':('Tronco_Caido',0.35)}
+  'hongos':('Hongos_Suelo',0.18),'orquidea':('Orquidea',0.4),'flores':('Planta_Flores_low',0.4),'roca':('Roca_A_low',0.3),'tronco':('Tronco_Caido',0.35),
+  # árboles grandes y frondosos para la orilla de selva
+  'arbol_a':('Arbol_Fondo_A_low',2.4),'arbol_b':('Arbol_Fondo_B_low',2.4),'arbol_orilla_a':('Arbol_Orilla_A',2.6),
+  'arbol_orilla_b':('Arbol_Orilla_B',2.6),'arbol_orilla_c':('Arbol_Orilla_C',2.4)}
 scene=bpy.context.scene
 col=bpy.data.collections.new('Vegetacion'); scene.collection.children.link(col)
 made=[]
