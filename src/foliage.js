@@ -180,13 +180,11 @@ export function animateFoliage(t) {
 }
 
 const isLeaf = (r, g, b) => g >= r * 0.98 && g > b * 1.15;
-/** Separa la copa de un modelo de árbol: devuelve el modelo con la copa oscurecida y un muestreador de su superficie. */
+/** Separa la copa de un modelo de árbol: devuelve el modelo sin la copa y un muestreador de su superficie. */
 function crown(name, geo) {
   if (crowns[name] !== undefined) return crowns[name];
   const col = geo.attributes.color;
   const pos = geo.attributes.position;
-  const dark = geo.clone();
-  const dc = dark.attributes.color;
   const leafPos = [];
   const leafNrm = [];
   const leafTris = [];
@@ -203,8 +201,6 @@ function crown(name, geo) {
     if (!isLeaf(r, g, b)) continue;
     leafTris.push(t);
     for (let v = t; v < t + 3; v++) {
-      // relleno en sombra entre los racimos
-      dc.setXYZ(v, col.getX(v) * 0.42, col.getY(v) * 0.5, col.getZ(v) * 0.4);
       leafPos.push(pos.getX(v), pos.getY(v), pos.getZ(v));
       leafNrm.push(nrm.getX(v), nrm.getY(v), nrm.getZ(v));
     }
@@ -214,11 +210,21 @@ function crown(name, geo) {
   lg.setAttribute('position', new THREE.Float32BufferAttribute(leafPos, 3));
   lg.setAttribute('normal', new THREE.Float32BufferAttribute(leafNrm, 3));
   lg.computeBoundingSphere();
-  // la copa original se encoge hacia su centro: queda dentro de los racimos como volumen en sombra
-  const ctr = lg.boundingSphere.center;
-  const dp = dark.attributes.position;
-  for (const t of leafTris)
-    for (let v = t; v < t + 3; v++) dp.setXYZ(v, ctr.x + (dp.getX(v) - ctr.x) * 0.84, ctr.y + (dp.getY(v) - ctr.y) * 0.84, ctr.z + (dp.getZ(v) - ctr.z) * 0.84);
+  // el modelo queda sin la copa original (solo tronco, ramas y lo demás): las hojas son solo los racimos
+  const isLeafTri = new Uint8Array(pos.count / 3);
+  for (const t of leafTris) isLeafTri[t / 3] = 1;
+  const dark = new THREE.BufferGeometry();
+  for (const [key, attr] of Object.entries(geo.attributes)) {
+    const n = attr.itemSize;
+    const out = new attr.array.constructor((pos.count - leafTris.length * 3) * n);
+    let o = 0;
+    for (let t = 0; t < pos.count; t += 3) {
+      if (isLeafTri[t / 3]) continue;
+      out.set(attr.array.subarray(t * n, (t + 3) * n), o);
+      o += 3 * n;
+    }
+    dark.setAttribute(key, new THREE.BufferAttribute(out, n, attr.normalized));
+  }
   const sampler = new MeshSurfaceSampler(new THREE.Mesh(lg)).build();
   const area = sampler.distribution[sampler.distribution.length - 1];
   return (crowns[name] = { dark, sampler, area, radius: lg.boundingSphere.radius, center: lg.boundingSphere.center.clone() });
@@ -232,7 +238,7 @@ export class TuftBuilder {
     this.nrm = [];
     this.data = [];
   }
-  /** Devuelve la geometría del árbol a usar (copa oscurecida) y agrega sus racimos; null si no aplica. */
+  /** Devuelve la geometría del árbol a usar (sin copa) y agrega sus racimos; null si no aplica. */
   tree(name, geo, matrix) {
     if (!tuftMat) return null;
     const c = crown(name, geo);
@@ -240,13 +246,13 @@ export class TuftBuilder {
     const R = this.R;
     const scale = matrix.getMaxScaleOnAxis();
     const size = c.radius * 0.42; // racimos grandes: se leen bien en un árbol de juguete
-    const n = Math.min(260, Math.round((c.area / (size * size)) * 3.4));
+    const n = Math.min(380, Math.round((c.area / (size * size)) * 5));
     const nm = new THREE.Matrix3().getNormalMatrix(matrix);
     const p = new THREE.Vector3();
     const q = new THREE.Vector3();
     for (let i = 0; i < n; i++) {
       c.sampler.sample(p, q);
-      const outer = R() < 0.72;
+      const outer = R() < 0.62;
       const depth = (outer ? -R() * 0.15 : 0.25 + R() * 0.8) * size;
       p.addScaledVector(q, -depth).applyMatrix4(matrix);
       q.applyMatrix3(nm).normalize();
