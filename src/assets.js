@@ -1,4 +1,4 @@
-// Modelos hechos en Blender (ver blender/animales.py e invasores.py) y vegetación de la landing de PyCon 2028.
+// Modelos hechos en Blender (ver blender/animales.py, invasores.py y entorno.py) y vegetación de la landing de PyCon 2028.
 // Se cargan una sola vez al inicio. Cada pieza se convierte al mismo formato que GeoBuilder
 // (no indexada, con color RGB por vértice) para poder mezclarla con el resto de la escena.
 import * as THREE from 'three';
@@ -45,7 +45,7 @@ async function load(url) {
 export async function loadAssets() {
   const base = import.meta.env.BASE_URL;
   await Promise.all([
-    ...['models/animales.glb', 'models/invasores.glb', 'models/vegetacion.glb'].map((f) => load(base + f).catch((e) => console.warn('No se pudo cargar', f, e))),
+    ...['models/animales.glb', 'models/invasores.glb', 'models/vegetacion.glb', 'models/entorno.glb'].map((f) => load(base + f).catch((e) => console.warn('No se pudo cargar', f, e))),
     loadFoliage().catch((e) => console.warn('No se pudieron cargar las hojas', e)),
   ]);
 }

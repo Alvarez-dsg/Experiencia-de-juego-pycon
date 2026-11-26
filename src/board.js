@@ -7,6 +7,7 @@ import { animateFoliage } from './foliage.js';
 import { buildTerrain, buildSkirt, buildWater, buildTiles, buildProps, buildCompany, buildHeart, buildMeadow, buildVegetation, HEART_TOP, MEADOW_TOP, SIGN_YAW } from './scenery.js';
 import { cellAt, colX, rowZ, LAND_Y, HEART } from './terrain.js';
 import { CanvasPlane, FONT, roundRect } from './ui3d.js';
+import { asset } from './assets.js';
 import { sfx } from './audio.js';
 
 const CELL = BOARD.cell;
@@ -34,8 +35,11 @@ export class Board {
       this.content.add(m);
       return m;
     };
-    add(buildTerrain(), terrainMat).receiveShadow = true;
-    add(buildSkirt(), new THREE.MeshLambertMaterial({ vertexColors: true, clippingPlanes: [riseClip], side: THREE.DoubleSide }));
+    // isla y entorno modelados en Blender (blender/entorno.py → models/entorno.glb, en casillas);
+    // si el GLB no cargó, se usa la versión hecha con código
+    const env = (name, fallback) => asset(name)?.clone().scale(CELL, CELL, CELL) ?? fallback();
+    add(env('terreno', buildTerrain), terrainMat).receiveShadow = true;
+    add(env('costado', buildSkirt), new THREE.MeshLambertMaterial({ vertexColors: true, clippingPlanes: [riseClip], side: THREE.DoubleSide }));
     // casillas por fila: solo se ven las filas abiertas en el nivel actual
     this.rowTiles = [];
     for (let r = 0; r < BOARD.rows; r++) {
@@ -44,7 +48,7 @@ export class Board {
       if (t) t.receiveShadow = true;
       this.rowTiles.push(t);
     }
-    add(buildProps(), MATS.std, 0.0007).castShadow = true;
+    add(env('decorado', buildProps), MATS.std, 0.0007).castShadow = true;
     // vegetación de la landing de PyCon 2028 (hojas finas: sin contorno y por las dos caras)
     const vegGeo = buildVegetation();
     if (vegGeo) {
@@ -60,7 +64,7 @@ export class Board {
       }
     }
     const comp = buildCompany();
-    add(comp.geo, MATS.std, 0.0009).castShadow = true;
+    add(env('empresa', () => comp.geo), MATS.std, 0.0009).castShadow = true;
     this.smokeOrigin = comp.smoke;
     this.smokeT = 0;
 
