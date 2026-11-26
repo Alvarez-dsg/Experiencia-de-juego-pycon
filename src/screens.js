@@ -1,7 +1,7 @@
 // Pantalla de inicio (según el wireframe): selector de idioma arriba, tarjeta con el chigüiro
 // constructor (casco y llave) y dos botones: "Ver tutorial" y "Jugar".
 import * as THREE from 'three';
-import { CanvasPlane, Button3D, PY, FONT, drawCard, drawEyebrow, drawPyBrand, fitFont, roundRect, popIn } from './ui3d.js';
+import { CanvasPlane, Button3D, PY, FONT, drawCard, roundRect, popIn } from './ui3d.js';
 import { tr, getLang, setLang } from './i18n.js';
 
 /** Chigüiro con casco amarillo, camisa morada y una llave en la mano (dibujo original, estilo de la portada). */
@@ -167,70 +167,99 @@ export class StartScreen extends THREE.Group {
     this.enBtn.redraw();
     this.bg.draw((ctx, W, H) => {
       const pad = W * 0.015;
-      drawCard(ctx, pad, pad, W - pad * 2, H - pad * 2, H * 0.08, { lw: H * 0.01 });
-      // arte: fondo salvia con el chigüiro constructor
-      const ax = W * 0.3;
-      const aw = W * 0.4;
-      const ay = H * 0.07;
-      const ah = H * 0.6;
-      roundRect(ctx, ax, ay, aw, ah, H * 0.05);
-      const g = ctx.createLinearGradient(0, ay, 0, ay + ah);
-      g.addColorStop(0, '#eef2e1');
-      g.addColorStop(1, '#d6e4c4');
-      ctx.fillStyle = g;
-      ctx.fill();
+      const cx = pad;
+      const cy = pad;
+      const cw = W - pad * 2;
+      const ch = H - pad * 2;
+      const r = H * 0.08;
+      drawCard(ctx, cx, cy, cw, ch, r, { lw: H * 0.01 });
+      // la ilustración ocupa toda la tarjeta (recorte tipo "cover")
       ctx.save();
-      roundRect(ctx, ax, ay, aw, ah, H * 0.05);
+      roundRect(ctx, cx, cy, cw, ch, r);
       ctx.clip();
       if (this.art) {
-        // recorte tipo "cover" centrado en el chigüiro (algo a la derecha del centro de la imagen)
         const iw = this.art.width;
         const ih = this.art.height;
-        const k = Math.max(aw / iw, ah / ih);
-        const sw = aw / k;
-        const sh = ah / k;
+        const k = Math.max(cw / iw, ch / ih);
+        const sw = cw / k;
+        const sh = ch / k;
         const sx = Math.min(iw - sw, Math.max(0, iw * 0.53 - sw / 2));
         const sy = (ih - sh) / 2;
-        ctx.drawImage(this.art, sx, sy, sw, sh, ax, ay, aw, ah);
-      } else drawChiguiroWorker(ctx, W / 2, ay + ah * 0.52, ah * 0.78);
+        ctx.drawImage(this.art, sx, sy, sw, sh, cx, cy, cw, ch);
+        // velo oscuro arriba y a la izquierda para que el texto blanco se lea sobre el cielo
+        const top = ctx.createLinearGradient(0, cy, 0, cy + ch * 0.5);
+        top.addColorStop(0, 'rgba(12, 24, 14, 0.62)');
+        top.addColorStop(1, 'rgba(12, 24, 14, 0)');
+        ctx.fillStyle = top;
+        ctx.fillRect(cx, cy, cw, ch * 0.5);
+        const left = ctx.createLinearGradient(cx, 0, cx + cw * 0.4, 0);
+        left.addColorStop(0, 'rgba(12, 24, 14, 0.4)');
+        left.addColorStop(1, 'rgba(12, 24, 14, 0)');
+        ctx.fillStyle = left;
+        ctx.fillRect(cx, cy + ch * 0.25, cw * 0.4, ch * 0.3);
+      } else drawChiguiroWorker(ctx, W / 2, H * 0.52, H * 0.6);
       ctx.restore();
-      // borde fino sobre el arte
-      roundRect(ctx, ax, ay, aw, ah, H * 0.05);
-      ctx.lineWidth = H * 0.006;
-      ctx.strokeStyle = 'rgba(31, 41, 32, 0.25)';
+      // borde naranja encima de la ilustración
+      roundRect(ctx, cx, cy, cw, ch, r);
+      ctx.lineWidth = H * 0.01;
+      ctx.strokeStyle = PY.orange;
       ctx.stroke();
-      // marca y título a los lados del arte
-      drawPyBrand(ctx, W * 0.045, H * 0.1, H * 0.06);
-      drawEyebrow(ctx, tr('Experiencia RA · Meta Quest'), W * 0.045, H * 0.24, H * 0.032, { maxW: ax - W * 0.07 });
+
+      const light = !!this.art; // con ilustración: letras claras con sombra
+      const ink = light ? '#fffdf7' : PY.ink;
+      ctx.save();
+      if (light) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        ctx.shadowBlur = H * 0.025;
+        ctx.shadowOffsetY = H * 0.006;
+      }
+      // título desplegado en horizontal, a lo ancho de la parte de arriba
+      const words = tr('Amazonas vs Leñadores').split(' vs ');
+      const a = words[0];
+      const b = words[1] || '';
+      const tx = W * 0.06;
+      const ty = H * 0.2;
+      let size = H * 0.115;
+      const maxT = W * 0.88;
+      const measure = () => {
+        ctx.font = `800 ${size}px ${FONT}`;
+        const wa = ctx.measureText(a + ' ').width;
+        const wb = ctx.measureText(' ' + b).width;
+        ctx.font = `600 ${size * 0.7}px ${FONT}`;
+        return wa + ctx.measureText('vs').width + wb;
+      };
+      while (measure() > maxT && size > 8) size *= 0.95;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = PY.ink;
-      const words = tr('Amazonas vs Leñadores').split(' vs ');
-      ctx.font = `700 ${H * 0.085}px ${FONT}`;
-      fitFont(ctx, words[0], ax - W * 0.07, H * 0.085, 700);
-      ctx.fillText(words[0], W * 0.045, H * 0.4);
-      ctx.fillStyle = PY.orange;
-      ctx.font = `600 ${H * 0.06}px ${FONT}`;
-      ctx.fillText('vs', W * 0.045, H * 0.48);
-      ctx.fillStyle = PY.ink;
-      fitFont(ctx, words[1] || '', ax - W * 0.07, H * 0.085, 700);
-      ctx.fillText(words[1] || '', W * 0.045, H * 0.58);
-      // lado derecho: frase corta
-      ctx.fillStyle = PY.muted;
-      ctx.font = `500 ${H * 0.045}px ${FONT}`;
+      let x = tx;
+      ctx.font = `800 ${size}px ${FONT}`;
+      ctx.fillStyle = ink;
+      ctx.fillText(a, x, ty);
+      x += ctx.measureText(a + ' ').width;
+      ctx.font = `600 ${size * 0.7}px ${FONT}`;
+      ctx.fillStyle = light ? '#ffb347' : PY.orange;
+      ctx.fillText('vs', x, ty);
+      x += ctx.measureText('vs').width;
+      ctx.font = `800 ${size}px ${FONT}`;
+      ctx.fillStyle = ink;
+      ctx.fillText(' ' + b, x, ty);
+      // frase corta debajo, a la izquierda
+      ctx.fillStyle = ink;
+      ctx.font = `600 ${H * 0.05}px ${FONT}`;
       const lines = tr('Defiende la isla de DEFORESTA S.A.').split(' ');
+      const maxW = W * 0.3;
       let line = '';
-      let yy = H * 0.3;
-      const maxW = W - (ax + aw) - W * 0.07;
+      let yy = H * 0.32;
       for (const w of lines) {
         const test = line ? line + ' ' + w : w;
         if (ctx.measureText(test).width > maxW && line) {
-          ctx.fillText(line, ax + aw + W * 0.035, yy);
+          ctx.fillText(line, tx, yy);
           yy += H * 0.065;
           line = w;
         } else line = test;
       }
-      ctx.fillText(line, ax + aw + W * 0.035, yy);
+      ctx.fillText(line, tx, yy);
+      ctx.restore();
     });
   }
 
