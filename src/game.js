@@ -29,6 +29,13 @@ const angLerp = (a, b, t) => {
 };
 const DEEP = 0.55;
 
+/** z de una gota del brazo de adelante: a `off` de la arena de la isla (sigue su contorno). */
+function frontDropZ(x, off) {
+  const u = Math.min(1, Math.abs(x - ISLAND.cx) / ISLAND.sandA);
+  const edge = ISLAND.cz + ISLAND.sandB * Math.sqrt(1 - u * u);
+  return Math.min(0.3, Math.max(edge, 0.245) + off);
+}
+
 export class Game {
   constructor(board, fx) {
     this.board = board;
@@ -572,7 +579,8 @@ export class Game {
       if (!e.alive) continue;
       if (Math.hypot(e.x - p.px, e.z - p.pz) > def.radius * CELL) continue;
       this.hitEnemy(e, def.damage, 0, 'roll');
-      this.knock(e, 0.5, 0.5);
+      const heavy = e.def.kind === 'machine';
+      this.knock(e, heavy ? def.knockMachine ?? 0.12 : 0.5, heavy ? 0.15 : 0.5);
     }
     const y = surfaceAt(p.px, p.pz) + 0.008;
     const pos = [p.px, y, p.pz];
@@ -751,8 +759,9 @@ export class Game {
   spawnRiverDrop(front = Math.random() < 0.55) {
     const o = createOrb();
     // brazo de adelante (cerca del usuario) o de atrás
-    const z = front ? rand(0.3, 0.322) : rand(-0.228, -0.19);
-    const orb = { ...o, value: ECONOMY.dropValue, t: 0, pos: new THREE.Vector3(L.left + 0.012, WATER_Y + 0.009, z), z0: z, state: 'float', phase: Math.random() * 6 };
+    // adelante van pegadas a la arena de la isla (lejos del follaje de la orilla, que las tapa); atrás, por el centro del cauce
+    const z = front ? rand(0.014, 0.024) : rand(-0.22, -0.198);
+    const orb = { ...o, value: ECONOMY.dropValue, t: 0, pos: new THREE.Vector3(L.left + 0.012, WATER_Y + 0.009, front ? frontDropZ(L.left, z) : z), z0: z, front, state: 'float', phase: Math.random() * 6 };
     orb.group.position.copy(orb.pos);
     orb.group.scale.setScalar(0.01);
     this.layer.add(orb.group);
@@ -791,7 +800,7 @@ export class Game {
       if (o.state === 'float') {
         if (playing) {
           o.pos.x += ECONOMY.current * dt;
-          o.pos.z = o.z0 + Math.sin(o.t * 0.9 + o.phase) * 0.006;
+          o.pos.z = (o.front ? frontDropZ(o.pos.x, o.z0) : o.z0) + Math.sin(o.t * 0.9 + o.phase) * 0.004;
         }
         o.pos.y = WATER_Y + 0.009 + Math.sin(o.t * 2.6 + o.phase) * 0.002;
         o.core.rotation.z = Math.sin(o.t * 2 + o.phase) * 0.15;

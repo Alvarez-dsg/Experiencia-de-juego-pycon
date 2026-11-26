@@ -157,16 +157,16 @@ export const PLANTS = {
   guacamaya: {
     name: 'Guacamaya',
     animal: true,
-    role: 'Tres semillas en abanico',
+    role: 'Escopeta: tres semillas de cerca',
     cost: 125,
     cooldown: 7.5,
     hp: 300,
     kind: 'shooter',
     projectile: 'seed',
     spread: 3, // tres semillas: al objetivo y a los lados
-    range: 5,
+    range: 2.2, // como una escopeta: corta distancia y mucho daño
     fireEvery: 1.5,
-    damage: SHOT,
+    damage: 2.4 * SHOT,
   },
   tortuga: {
     name: 'Tortuga charapa',
@@ -175,14 +175,15 @@ export const PLANTS = {
     role: 'Nada, rueda y golpea en área',
     cost: 100,
     cooldown: 10,
-    hp: 600,
+    hp: 1200,
     kind: 'roller', // también alcanza a los que cruzan por lo hondo
-    range: 4.2,
+    range: 1.6, // solo sale contra invasores muy cercanos
     damage: 6 * SHOT,
     radius: 1.15,
     rollSpeed: 3.2,
     backSpeed: 2.4,
-    rest: 5,
+    rest: 10, // tarda en recargar la siguiente rodada
+    knockMachine: 0.12, // a las máquinas casi no las empuja (casillas)
   },
   anaconda: {
     name: 'Anaconda',
@@ -229,8 +230,8 @@ export const ABILITIES = {
   mariposa: { tipo: 'Sanadora', text: 'Con cada aleteo cura a los defensores que tiene alrededor. Ponla junto a tu muro.', stat: ['Cura', '+25'] },
   chiguiro: { tipo: 'Mordedor', text: 'Resistente y tranquilo… hasta que alguien se le acerca: entonces muerde sin parar.', stat: ['Mordida', '45'] },
   mono: { tipo: 'Saltador', text: 'Salta sobre el invasor más cercano, lo golpea y vuelve de otro salto. No se lanza a lo hondo.', stat: ['Golpe', '75'] },
-  guacamaya: { tipo: 'Tiradora triple', text: 'Lanza tres semillas en abanico. No alcanza a quien va por lo hondo del río.', stat: ['Daño', '25×3'] },
-  tortuga: { tipo: 'Nadadora', text: 'Se esconde en su caparazón y rueda o nada hacia los invasores, ¡también por lo hondo! Golpea a todos alrededor.', stat: ['Golpe', '150'] },
+  guacamaya: { tipo: 'Escopeta', text: 'Dispara tres semillas en abanico solo de cerca, pero pegan muy fuerte. No alcanza a quien va por lo hondo del río.', stat: ['Daño', '60×3'] },
+  tortuga: { tipo: 'Nadadora', text: 'Muy resistente. Cuando un invasor llega muy cerca, se esconde en su caparazón y rueda hacia él, ¡también por lo hondo! Golpea a todos alrededor y luego descansa.', stat: ['Golpe', '150'] },
   anaconda: { tipo: 'Trampa', text: 'Se traga a la persona que se acerque. A las máquinas las aprieta con fuerza y las detiene un rato.', stat: ['Apretón', '1500'] },
   jabillo: { tipo: 'Granada', text: 'No se planta: tómalo con la mano y lánzalo. Su fruto estalla y arrasa a la redonda, también en el agua.', stat: ['Daño', '2500'] },
 };

@@ -18,7 +18,7 @@ export const SHORT = {
   mariposa: 'Cura a su equipo',
   chiguiro: 'Muerde de cerca',
   mono: 'Salta y golpea',
-  guacamaya: 'Tiro triple',
+  guacamaya: 'Escopeta de cerca',
   tortuga: 'Rueda y aplasta',
   anaconda: 'Atrapa y aprieta',
   jabillo: 'Lánzalo: explota',

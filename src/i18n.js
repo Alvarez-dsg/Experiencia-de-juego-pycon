@@ -79,6 +79,7 @@ const EN = {
   'Muerde de cerca': 'Close-range bite',
   'Salta y golpea': 'Leaps and strikes',
   'Tiro triple': 'Triple shot',
+  'Escopeta de cerca': 'Close-range shotgun',
   'Rueda y aplasta': 'Rolls and smashes',
   'Atrapa y aprieta': 'Grabs and squeezes',
   'Lánzalo: explota': 'Throw it: boom!',
