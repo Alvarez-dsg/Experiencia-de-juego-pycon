@@ -146,6 +146,14 @@ export class StartScreen extends THREE.Group {
     this.buttons = [this.tutBtn, this.playBtn, this.relocBtn, this.esBtn, this.enBtn];
     this.appear = 1;
     this.visible = false;
+    // ilustración del chigüiro (de frente, con casco y llave); mientras carga se usa el dibujo vectorial
+    this.art = null;
+    const img = new Image();
+    img.onload = () => {
+      this.art = img;
+      this.redraw();
+    };
+    img.src = import.meta.env.BASE_URL + 'chiguiro_inicio.webp';
     this.redraw();
   }
 
@@ -174,8 +182,23 @@ export class StartScreen extends THREE.Group {
       ctx.save();
       roundRect(ctx, ax, ay, aw, ah, H * 0.05);
       ctx.clip();
-      drawChiguiroWorker(ctx, W / 2, ay + ah * 0.52, ah * 0.78);
+      if (this.art) {
+        // recorte tipo "cover" centrado en el chigüiro (algo a la derecha del centro de la imagen)
+        const iw = this.art.width;
+        const ih = this.art.height;
+        const k = Math.max(aw / iw, ah / ih);
+        const sw = aw / k;
+        const sh = ah / k;
+        const sx = Math.min(iw - sw, Math.max(0, iw * 0.53 - sw / 2));
+        const sy = (ih - sh) / 2;
+        ctx.drawImage(this.art, sx, sy, sw, sh, ax, ay, aw, ah);
+      } else drawChiguiroWorker(ctx, W / 2, ay + ah * 0.52, ah * 0.78);
       ctx.restore();
+      // borde fino sobre el arte
+      roundRect(ctx, ax, ay, aw, ah, H * 0.05);
+      ctx.lineWidth = H * 0.006;
+      ctx.strokeStyle = 'rgba(31, 41, 32, 0.25)';
+      ctx.stroke();
       // marca y título a los lados del arte
       drawPyBrand(ctx, W * 0.045, H * 0.1, H * 0.06);
       drawEyebrow(ctx, tr('Experiencia RA · Meta Quest'), W * 0.045, H * 0.24, H * 0.032, { maxW: ax - W * 0.07 });
