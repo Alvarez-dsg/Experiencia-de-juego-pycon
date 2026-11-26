@@ -5,6 +5,7 @@ import { BOARD, LAYOUT, ISLAND } from './config.js';
 import { GeoBuilder, mulberry32, seg, cyl, ball, cone, capsule, rbox, eye, blush, CLIP, toon, pick, U } from './models.js';
 import { asset } from './assets.js';
 import { regionAt, groundAt, depthAt, bankZ, frontZ, LAND, colX, rowZ, CELL, ROWS, COLS, WATER_Y, LAND_Y, BANK_Y } from './terrain.js';
+import { TuftBuilder } from './foliage.js';
 
 const L = LAYOUT;
 const T = BOARD.thickness;
@@ -190,6 +191,15 @@ function veg(b, name, x, y, z, k = 1, yaw = 0) {
   return true;
 }
 
+/** Árbol grande con copa de racimos de hojas (foliage.js); sin el atlas de hojas queda como el modelo original. */
+function vegTree(b, tb, name, x, y, z, k = 1, yaw = 0) {
+  const g = asset(name);
+  if (!g) return false;
+  _vm.compose(_vp.set(x, y, z), _vq.setFromAxisAngle(_vy, yaw), _vs.set(k * U, k * U, k * U));
+  b.addBuilt(tb.tree(name, g, _vm) ?? g, _vm);
+  return true;
+}
+
 /** Vegetación (sin contorno): pasto de la isla, matas de la orilla de selva, lirios y raíces de mangle. */
 export function buildVegetation() {
   const R = mulberry32(77);
@@ -253,17 +263,18 @@ export function buildVegetation() {
   // ── selva tupida en la orilla del usuario: árboles grandes y frondosos de la landing a lo largo del borde,
   //    más bajos en el centro (para no tapar el río) y más altos hacia las esquinas ──
   const bt = new GeoBuilder(R); // árboles aparte: proyectan sombra
+  const tb = new TuftBuilder(); // racimos de hojas de las copas, como en la landing
   const trees = ['arbol_a', 'arbol_b', 'arbol_orilla_a', 'arbol_orilla_b', 'arbol_orilla_c'];
   if (asset('arbol_a')) {
     for (let x = L.left + 0.025, i = 0; x < L.right - 0.015; x += 0.05 + R() * 0.02, i++) {
       const t = Math.min(1, Math.abs(x) / (L.totalW / 2));
-      veg(bt, trees[i % trees.length], x, BANK_Y, L.front - 0.012 - R() * 0.01, 0.42 + 0.45 * t * t + R() * 0.08, R() * 6.28);
+      vegTree(bt, tb, trees[i % trees.length], x, BANK_Y, L.front - 0.012 - R() * 0.01, 0.42 + 0.45 * t * t + R() * 0.08, R() * 6.28);
     }
     // segunda fila en las esquinas, más adentro, y árboles por los costados cercanos
     for (const s of [-1, 1]) {
       for (let j = 0; j < 3; j++) {
         const x = s * (L.totalW / 2 - 0.06 - j * 0.07 - R() * 0.02);
-        veg(bt, pick(trees, R), x, BANK_Y, L.front - 0.035 - R() * 0.01, 0.7 + R() * 0.2 - j * 0.1, R() * 6.28);
+        vegTree(bt, tb, pick(trees, R), x, BANK_Y, L.front - 0.035 - R() * 0.01, 0.7 + R() * 0.2 - j * 0.1, R() * 6.28);
       }
       veg(bt, 'cecropia', s * (L.totalW / 2 - 0.02), BANK_Y, L.front - 0.045, 0.62, R() * 6.28);
       veg(bt, 'helecho_arb', s * (L.totalW / 2 - 0.1), BANK_Y, L.front - 0.03, 0.7, R() * 6.28);
@@ -282,6 +293,7 @@ export function buildVegetation() {
   veg(b, 'tronco', L.left + 0.2, BANK_Y, L.back + 0.06, 0.6, 0.3);
   const geo = b.build();
   geo.userData.trees = bt.parts.length ? bt.build() : null;
+  geo.userData.tufts = tb.build();
   return geo;
 }
 

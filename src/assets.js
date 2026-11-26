@@ -3,6 +3,7 @@
 // (no indexada, con color RGB por vértice) para poder mezclarla con el resto de la escena.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadFoliage } from './foliage.js';
 
 const GEO = {};
 
@@ -43,9 +44,10 @@ async function load(url) {
 /** Carga los GLB (si alguno falla, el juego usa los modelos hechos con código). */
 export async function loadAssets() {
   const base = import.meta.env.BASE_URL;
-  await Promise.all(
-    ['models/animales.glb', 'models/invasores.glb', 'models/vegetacion.glb'].map((f) => load(base + f).catch((e) => console.warn('No se pudo cargar', f, e))),
-  );
+  await Promise.all([
+    ...['models/animales.glb', 'models/invasores.glb', 'models/vegetacion.glb'].map((f) => load(base + f).catch((e) => console.warn('No se pudo cargar', f, e))),
+    loadFoliage().catch((e) => console.warn('No se pudieron cargar las hojas', e)),
+  ]);
 }
 
 /** Geometría (en casillas, escala 1) de una pieza por nombre, o null. */

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { BOARD, LAYOUT, ISLAND } from './config.js';
 import { MATS, riseClip, addOutline, createHpBar, toon } from './models.js';
+import { animateFoliage } from './foliage.js';
 import { buildTerrain, buildSkirt, buildWater, buildTiles, buildProps, buildCompany, buildHeart, buildMeadow, buildVegetation, HEART_TOP, MEADOW_TOP, SIGN_YAW } from './scenery.js';
 import { cellAt, colX, rowZ, LAND_Y, HEART } from './terrain.js';
 import { CanvasPlane, FONT, roundRect } from './ui3d.js';
@@ -51,6 +52,12 @@ export class Board {
       add(vegGeo, vegMat).receiveShadow = true;
       // árboles grandes de la orilla: proyectan sombra sobre el tablero
       if (vegGeo.userData.trees) add(vegGeo.userData.trees, vegMat).castShadow = true;
+      // copas de racimos de hojas fotografiadas (estilo de la landing de PyCon 2028)
+      const tufts = vegGeo.userData.tufts;
+      if (tufts) {
+        tufts.matrixAutoUpdate = false;
+        this.content.add(tufts);
+      }
     }
     const comp = buildCompany();
     add(comp.geo, MATS.std, 0.0009).castShadow = true;
@@ -180,6 +187,7 @@ export class Board {
   }
 
   update(dt) {
+    animateFoliage(performance.now() / 1000);
     // corriente del río (de izquierda a derecha)
     const map = this.water.material.normalMap || this.water.material.map;
     map.offset.x -= dt * 0.03;

@@ -20,14 +20,14 @@ export const LEVELS = [
     hpMul: 1.15,
     rows: [1, 2], // filas donde se puede plantar
     speedMul: 1,
-    length: 150,
-    count: 14,
+    length: 90, // corto: es el nivel de calentamiento
+    count: 11,
     wave: 6,
     mix: { independiente: 1, profesional: 0.45 },
     tips: [
       { t: 0.3, text: 'Nivel 1 · La primera tala', sub: 'Toca las gotas del río y planta heliconias' },
       { t: 12, text: 'Llegan por toda la orilla', sub: 'Rodea el corazón de la isla con defensores' },
-      { t: 60, text: 'Los animales también defienden', sub: 'El mono salta · la tortuga nada · el chigüiro muerde' },
+      { t: 38, text: 'Los animales también defienden', sub: 'El mono salta · la tortuga nada · el chigüiro muerde' },
     ],
   },
   {
